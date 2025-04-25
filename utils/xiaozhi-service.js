@@ -1,0 +1,594 @@
+/**
+ * 小智语音助手服务
+ * 提供WebSocket连接、消息发送和TTS音频播放功能
+ */
+
+let websocket = null;
+let isConnected = false;
+let messageCallbacks = [];
+let audioContext = null;
+
+// 音频播放队列
+let audioQueue = [];
+let isPlaying = false;
+
+/**
+ * 连接到小智服务器
+ * @param {String} url WebSocket服务器地址
+ * @param {Function} onConnectCallback 连接成功回调
+ * @param {Function} onMessageCallback 消息接收回调
+ * @param {Function} onCloseCallback 连接关闭回调
+ * @param {Function} onErrorCallback 错误回调
+ * @returns {Promise} 连接结果
+ */
+const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallback, onErrorCallback) => {
+  return new Promise((resolve, reject) => {
+    try {
+      // 检查URL格式
+      if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+        const error = 'URL格式错误，必须以ws://或wss://开头';
+        if (onErrorCallback) onErrorCallback(error);
+        reject(error);
+        return;
+      }
+      
+      // 添加认证参数
+      let connUrl = url;
+      if (url.indexOf('?') === -1) {
+        connUrl = `${url}?device_id=uniapp_device&device_mac=00:11:22:33:44:55`;
+      } else {
+        connUrl = `${url}&device_id=uniapp_device&device_mac=00:11:22:33:44:55`;
+      }
+      
+      // 关闭已存在的连接
+      if (websocket) {
+        websocket.close();
+        websocket = null;
+      }
+      
+      // 创建WebSocket连接
+      websocket = uni.connectSocket({
+        url: connUrl,
+        success: () => {
+          console.log('WebSocket连接创建成功');
+        },
+        fail: (err) => {
+          console.error('WebSocket连接创建失败', err);
+          if (onErrorCallback) onErrorCallback(err);
+          reject(err);
+        }
+      });
+      
+      // 监听WebSocket连接打开
+      websocket.onOpen(() => {
+        console.log('WebSocket连接已打开');
+        isConnected = true;
+        
+        // 发送hello消息
+        sendHelloMessage().then(() => {
+          if (onConnectCallback) onConnectCallback();
+          resolve(true);
+        }).catch(err => {
+          if (onErrorCallback) onErrorCallback(err);
+          reject(err);
+        });
+      });
+      
+      // 监听WebSocket错误
+      websocket.onError((err) => {
+        console.error('WebSocket错误', err);
+        isConnected = false;
+        if (onErrorCallback) onErrorCallback(err);
+        reject(err);
+      });
+      
+      // 监听WebSocket关闭
+      websocket.onClose(() => {
+        console.log('WebSocket连接已关闭');
+        isConnected = false;
+        if (onCloseCallback) onCloseCallback();
+      });
+      
+      // 监听WebSocket消息
+      websocket.onMessage((res) => {
+        try {
+          // 检查是否为文本消息
+          if (typeof res.data === 'string') {
+            const message = JSON.parse(res.data);
+            
+            // 处理不同类型的消息
+            if (message.type === 'hello') {
+              console.log('服务器回应：', message.message);
+            } else if (message.type === 'tts') {
+              // TTS状态消息
+              if (message.state === 'start') {
+                console.log('服务器开始发送语音');
+              } else if (message.state === 'sentence_start') {
+                console.log('服务器发送语音段:', message.text);
+                // 处理base64 MP3数据
+                if (message.tts_file) {
+      //             const audioData = atob(message.tts_file.data);
+				  
+      //             const arrayBuffer = new ArrayBuffer(audioData.length);
+      //             const uint8Array = new Uint8Array(arrayBuffer);
+      //             for (let i = 0; i < audioData.length; i++) {
+      //               uint8Array[i] = audioData.charCodeAt(i);
+      //             }
+					const arrayBuffer=uni.base64ToArrayBuffer(message.tts_file.data);
+                  playMP3Data(arrayBuffer);
+                }
+              } else if (message.state === 'sentence_end') {
+                console.log('语音段结束:', message.text);
+              } else if (message.state === 'stop') {
+                console.log('服务器语音传输结束');
+              }
+            } else if (message.type === 'llm') {
+              // 大模型回复
+              console.log('大模型回复:', message.text);
+            }
+            
+            // 调用消息回调
+            if (onMessageCallback) onMessageCallback(message);
+          } else {
+            // 处理二进制数据 - MP3格式
+            handleBinaryMessage(res.data);
+          }
+        } catch (error) {
+          console.error('WebSocket消息处理错误:', error);
+        }
+      });
+    } catch (error) {
+      console.error('连接错误:', error);
+      if (onErrorCallback) onErrorCallback(error);
+      reject(error);
+    }
+  });
+};
+
+/**
+ * 发送hello握手消息
+ * @returns {Promise} 握手结果
+ */
+const sendHelloMessage = () => {
+  return new Promise((resolve, reject) => {
+    if (!websocket || !isConnected) {
+      reject('WebSocket未连接');
+      return;
+    }
+    
+    try {
+      // 设置设备信息
+      const helloMessage = {
+        type: 'hello',
+        device_id: 'uniapp_device',
+        device_name: 'UniApp设备',
+        device_mac: '00:11:22:33:44:55',
+        token: 'your-token1' // 使用config.yaml中配置的token
+      };
+      
+      console.log('发送hello握手消息');
+      websocket.send({
+        data: JSON.stringify(helloMessage),
+        success: () => {
+          console.log('hello消息发送成功');
+          resolve(true);
+        },
+        fail: (err) => {
+          console.error('hello消息发送失败', err);
+          reject(err);
+        }
+      });
+    } catch (error) {
+      console.error('发送hello消息错误:', error);
+      reject(error);
+    }
+  });
+};
+
+/**
+ * 断开WebSocket连接
+ */
+const disconnectFromServer = () => {
+  if (websocket) {
+    websocket.close();
+    websocket = null;
+    isConnected = false;
+  }
+};
+
+/**
+ * 发送文本消息
+ * @param {String} message 文本消息
+ * @returns {Promise} 发送结果
+ */
+const sendTextMessage = (message) => {
+  return new Promise((resolve, reject) => {
+    if (!message || !websocket || !isConnected) {
+      reject('WebSocket未连接或消息为空');
+      return;
+    }
+    
+    try {
+      // 直接发送listen消息
+      const listenMessage = {
+        type: 'listen',
+        mode: 'manual',
+        state: 'detect',
+        text: message
+      };
+      
+      websocket.send({
+        data: JSON.stringify(listenMessage),
+        success: () => {
+          console.log('文本消息发送成功');
+          resolve(true);
+        },
+        fail: (err) => {
+          console.error('文本消息发送失败', err);
+          reject(err);
+        }
+      });
+    } catch (error) {
+      console.error('发送消息错误:', error);
+      reject(error);
+    }
+  });
+};
+
+/**
+ * 处理二进制消息
+ * @param {ArrayBuffer} data 二进制数据
+ */
+const handleBinaryMessage = (data) => {
+  try {
+    // 检查数据类型
+    if (data instanceof ArrayBuffer) {
+      console.log('收到二进制数据，大小:', data.byteLength, '字节');
+      
+      // 检查数据头部，判断是否为MP3数据
+      const headerView = new Uint8Array(data, 0, 4);
+      
+      // MP3文件通常以ID3标签(ID3v2)开头，或者直接是MP3帧
+      // ID3v2标签以'ID3'开头
+      const isID3 = headerView[0] === 73 && headerView[1] === 68 && headerView[2] === 51;
+      
+      // MP3帧通常以0xFF开头，后面跟着0xE0-0xFF之间的字节
+      const isMP3Frame = headerView[0] === 0xFF && (headerView[1] & 0xE0) === 0xE0;
+      
+      if (isID3 || isMP3Frame) {
+        console.log('检测到MP3数据，准备播放');
+        playMP3Data(data);
+      } else {
+        console.log('收到未知格式的二进制数据');
+      }
+    } else {
+      console.log('收到非ArrayBuffer数据');
+    }
+  } catch (error) {
+    console.error('处理二进制消息错误:', error);
+  }
+};
+
+/**
+ * 播放MP3数据
+ * @param {ArrayBuffer} mp3Data MP3数据
+ */
+const playMP3Data = (mp3Data) => {
+  if (!mp3Data || mp3Data.byteLength === 0) {
+    console.warn('无效的MP3数据，无法播放');
+    return;
+  }
+  
+  // 将数据加入队列
+  audioQueue.push(mp3Data);
+  console.log('MP3数据已加入播放队列，当前队列长度:', audioQueue.length);
+  
+  // 如果当前没有播放，开始播放
+  if (!isPlaying) {
+    playNextInQueue();
+  }
+};
+
+/**
+ * 播放队列中的下一个音频
+ */
+const playNextInQueue = () => {
+  if (audioQueue.length === 0) {
+    isPlaying = false;
+    return;
+  }
+  
+  isPlaying = true;
+  const mp3Data = audioQueue.shift();
+  
+  // 使用微信小程序的音频API播放
+  const innerAudioContext = uni.createInnerAudioContext();
+  
+  // 将ArrayBuffer转换为临时文件
+  const fs = uni.getFileSystemManager();
+  const tempFilePath = `${uni.env.USER_DATA_PATH}/temp_audio_${Date.now()}.mp3`;
+  
+  try {
+    fs.writeFileSync(tempFilePath, mp3Data);
+    
+    innerAudioContext.src = tempFilePath;
+    innerAudioContext.autoplay = true;
+    
+    innerAudioContext.onPlay(() => {
+      console.log('音频开始播放');
+    });
+    
+    innerAudioContext.onEnded(() => {
+      console.log('音频播放结束');
+      innerAudioContext.destroy();
+      
+      // 删除临时文件
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (e) {
+        console.error('删除临时文件失败:', e);
+      }
+      
+      // 播放下一个
+      playNextInQueue();
+    });
+    
+    innerAudioContext.onError((err) => {
+      console.error('音频播放错误:', err);
+      innerAudioContext.destroy();
+      
+      // 删除临时文件
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (e) {
+        console.error('删除临时文件失败:', e);
+      }
+      
+      // 播放下一个
+      playNextInQueue();
+    });
+  } catch (error) {
+    console.error('创建临时音频文件失败:', error);
+    isPlaying = false;
+  }
+};
+
+/**
+ * 检查连接状态
+ * @returns {Boolean} 是否已连接
+ */
+const isConnectedToServer = () => {
+  return isConnected;
+};
+
+let recorderManager = null; // 录音管理器
+let isRecording = false;    // 是否正在录音
+let recordFilePath = '';    // 录音文件路径
+
+/**
+ * 初始化录音管理器
+ * @param {Function} onStartCallback 开始录音回调
+ * @param {Function} onStopCallback 停止录音回调
+ * @param {Function} onErrorCallback 错误回调
+ */
+const initRecorder = (onStartCallback, onStopCallback, onErrorCallback) => {
+  if (!recorderManager) {
+    recorderManager = uni.getRecorderManager();
+    
+    // 监听录音开始事件
+    recorderManager.onStart(() => {
+      console.log('录音开始');
+      isRecording = true;
+      if (onStartCallback) onStartCallback();
+    });
+    
+    // 监听录音结束事件
+    recorderManager.onStop((res) => {
+      console.log('录音结束', res);
+      isRecording = false;
+      recordFilePath = res.tempFilePath;
+      
+      if (onStopCallback) onStopCallback(res);
+    });
+    
+    // 监听录音错误事件
+    recorderManager.onError((err) => {
+      console.error('录音错误', err);
+      isRecording = false;
+      if (onErrorCallback) onErrorCallback(err);
+    });
+  }
+  
+  return recorderManager;
+};
+
+/**
+ * 开始录音
+ * @param {Object} options 录音选项
+ */
+const startRecording = (options = {}) => {
+  if (!recorderManager) {
+    console.error('录音管理器未初始化');
+    return false;
+  }
+  
+  if (isRecording) {
+    console.warn('已经在录音中');
+    return false;
+  }
+  
+  // 默认录音设置
+  const defaultOptions = {
+    duration: 60000, // 最长录音时间，单位ms
+    sampleRate: 16000, // 采样率
+    numberOfChannels: 1, // 录音通道数
+    encodeBitRate: 64000, // 编码码率
+    format: 'mp3', // 音频格式
+    frameSize: 50 // 指定帧大小，单位KB
+  };
+  
+  // 合并用户选项
+  const recordOptions = {...defaultOptions, ...options};
+  
+  try {
+    recorderManager.start(recordOptions);
+    return true;
+  } catch (error) {
+    console.error('开始录音失败:', error);
+    return false;
+  }
+};
+
+/**
+ * 停止录音并发送到服务器
+ * @param {Function} progressCallback 上传进度回调
+ * @returns {Promise} 上传结果
+ */
+const stopRecordingAndSend = (progressCallback) => {
+  return new Promise((resolve, reject) => {
+    if (!recorderManager || !isRecording) {
+      reject('没有正在进行的录音');
+      return;
+    }
+    
+    // 停止录音
+    recorderManager.stop();
+    
+    // 等待onStop回调获取录音文件路径
+    const checkRecordFile = () => {
+      if (recordFilePath) {
+        sendAudioFile(recordFilePath, progressCallback)
+          .then(resolve)
+          .catch(reject);
+      } else {
+        setTimeout(checkRecordFile, 100);
+      }
+    };
+    
+    checkRecordFile();
+  });
+};
+
+/**
+ * 发送音频文件到服务器
+ * @param {String} filePath 音频文件路径
+ * @param {Function} progressCallback 上传进度回调
+ * @returns {Promise} 上传结果
+ */
+const sendAudioFile = (filePath, progressCallback) => {
+  return new Promise((resolve, reject) => {
+    if (!websocket || !isConnected) {
+      reject('WebSocket未连接');
+      return;
+    }
+    
+    console.log('准备发送音频文件:', filePath);
+    
+    try {
+      // 先发送一个开始监听的消息
+      const listenStartMessage = {
+        type: 'listen',
+        mode: 'manual',
+        state: 'start'
+      };
+      
+      websocket.send({
+        data: JSON.stringify(listenStartMessage),
+        success: () => {
+          console.log('发送录音开始信号成功');
+          
+          // 读取音频文件内容
+          uni.getFileSystemManager().readFile({
+            filePath,
+            success: (res) => {
+              const audioData = res.data; // ArrayBuffer类型
+              
+              // 发送音频二进制数据
+              websocket.send({
+                data: audioData,
+                success: () => {
+                  console.log('发送音频数据成功，大小:', audioData.byteLength, '字节');
+                  
+                  // 发送结束信号
+                  sendListenEndSignal()
+                    .then(resolve)
+                    .catch(reject);
+                },
+                fail: (err) => {
+                  console.error('发送音频数据失败:', err);
+                  reject(err);
+                }
+              });
+            },
+            fail: (err) => {
+              console.error('读取音频文件失败:', err);
+              reject(err);
+            }
+          });
+        },
+        fail: (err) => {
+          console.error('发送录音开始信号失败:', err);
+          reject(err);
+        }
+      });
+    } catch (error) {
+      console.error('发送音频过程出错:', error);
+      reject(error);
+    }
+  });
+};
+
+/**
+ * 发送监听结束信号
+ * @returns {Promise} 发送结果
+ */
+const sendListenEndSignal = () => {
+  return new Promise((resolve, reject) => {
+    if (!websocket || !isConnected) {
+      reject('WebSocket未连接');
+      return;
+    }
+    
+    try {
+      const listenEndMessage = {
+        type: 'listen',
+        mode: 'manual',
+        state: 'stop'
+      };
+      
+      websocket.send({
+        data: JSON.stringify(listenEndMessage),
+        success: () => {
+          console.log('发送录音结束信号成功');
+          resolve(true);
+        },
+        fail: (err) => {
+          console.error('发送录音结束信号失败:', err);
+          reject(err);
+        }
+      });
+    } catch (error) {
+      console.error('发送结束信号错误:', error);
+      reject(error);
+    }
+  });
+};
+
+/**
+ * 检查是否正在录音
+ * @returns {Boolean} 是否正在录音
+ */
+const isCurrentlyRecording = () => {
+  return isRecording;
+};
+
+export default {
+  connectToServer,
+  disconnectFromServer,
+  sendTextMessage,
+  isConnectedToServer,
+  initRecorder,
+  startRecording,
+  stopRecordingAndSend,
+  isCurrentlyRecording
+};
