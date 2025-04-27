@@ -451,16 +451,35 @@ const stopRecordingAndSend = (progressCallback) => {
       return;
     }
 
+    // 重置录音文件路径，确保获取到最新的录音
+    recordFilePath = '';
+
     // 停止录音
     recorderManager.stop();
 
     // 等待onStop回调获取录音文件路径
+    const maxWaitTime = 5000; // 最长等待5秒
+    const startTime = Date.now();
+
     const checkRecordFile = () => {
+      // 检查是否已经得到录音文件
       if (recordFilePath) {
-        sendAudioFile(recordFilePath, progressCallback)
+        console.log('获取到录音文件路径:', recordFilePath);
+
+        // 确保获得文件后立即发送，避免被下一个录音覆盖
+        const currentFilePath = recordFilePath;
+
+        sendAudioFile(currentFilePath, progressCallback)
           .then(resolve)
           .catch(reject);
       } else {
+        // 检查是否超时
+        if (Date.now() - startTime > maxWaitTime) {
+          reject('获取录音文件超时');
+          return;
+        }
+
+        // 继续等待
         setTimeout(checkRecordFile, 100);
       }
     };
