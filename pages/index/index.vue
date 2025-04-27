@@ -278,6 +278,9 @@ export default {
 			
 			this.addLog('正在停止录音...', 'info');
 			
+			// 立即将录音状态设为false，防止需要点击两次按钮
+			this.isRecording = false;
+			
 			// 清除录音超时
 			if (this.recordingTimeout) {
 				clearTimeout(this.recordingTimeout);
@@ -291,19 +294,12 @@ export default {
 			xiaozhiService.stopRecordingAndSend()
 				.catch(error => {
 					this.addLog(`录音停止错误: ${error}`, 'error');
-					this.isRecording = false;
 				});
 		},
 		
 		// 发送录音文件到服务器
 		sendRecordFile(filePath) {
 			this.addLog('正在准备发送录音文件...', 'info');
-			this.addMessage('发送语音中...', true);
-			
-			// 显示一个加载指示器
-			uni.showLoading({
-				title: '发送语音中'
-			});
 			
 			// 使用xiaozhi-service的统一接口发送录音
 			xiaozhiService.sendAudioFile(filePath)
@@ -312,9 +308,13 @@ export default {
 				})
 				.catch(error => {
 					this.addLog(`发送录音错误: ${error}`, 'error');
-				})
-				.finally(() => {
-					uni.hideLoading();
+					
+					// 显示错误提示给用户
+					uni.showToast({
+						title: '语音发送失败',
+						icon: 'none',
+						duration: 2000
+					});
 				});
 		},
 		
