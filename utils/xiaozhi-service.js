@@ -417,12 +417,12 @@ const startRecording = (options = {}) => {
     return false;
   }
   
-  // 默认录音设置
+  // 默认录音设置 - 调整参数以提高MP3兼容性
   const defaultOptions = {
-    duration: 60000, // 最长录音时间，单位ms
+    duration: 30000, // 最长录音时间缩短为30秒
     sampleRate: 16000, // 采样率
     numberOfChannels: 1, // 录音通道数
-    encodeBitRate: 64000, // 编码码率
+    encodeBitRate: 32000, // 降低比特率，提高兼容性
     format: 'mp3', // 音频格式
     frameSize: 50 // 指定帧大小，单位KB
   };
@@ -485,34 +485,60 @@ const sendAudioFile = (filePath, progressCallback) => {
     console.log('准备发送音频文件:', filePath);
     
     try {
-      // 先发送一个开始监听的消息
+      // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
       const listenStartMessage = {
         type: 'listen',
         mode: 'manual',
-        state: 'start'
+        state: 'start',
+        format: 'mp3'
       };
       
+      // 使用JSON.stringify()序列化消息
+      const startData = JSON.stringify(listenStartMessage);
+      
+      // 直接使用websocket对象发送文本消息
       websocket.send({
-        data: JSON.stringify(listenStartMessage),
+        data: startData,
         success: () => {
           console.log('发送录音开始信号成功');
           
-          // 读取音频文件内容
+          // 2. 读取音频文件内容
           uni.getFileSystemManager().readFile({
             filePath,
             success: (res) => {
-              const audioData = res.data; // ArrayBuffer类型
+              // 这里获取的是ArrayBuffer格式的音频数据
+              const audioData = res.data; 
               
-              // 发送音频二进制数据
+              // 3. 发送二进制音频数据 - 这是关键部分
               websocket.send({
-                data: audioData,
+                data: audioData, // 直接发送ArrayBuffer
+                // 不加任何额外参数
                 success: () => {
                   console.log('发送音频数据成功，大小:', audioData.byteLength, '字节');
                   
-                  // 发送结束信号
-                  sendListenEndSignal()
-                    .then(resolve)
-                    .catch(reject);
+                  // 4. 发送录音结束信号
+                  const listenEndMessage = {
+                    type: 'listen',
+                    mode: 'manual',
+                    state: 'stop',
+                    format: 'mp3'
+                  };
+                  
+                  // 增加一点延迟再发送结束信号
+                  setTimeout(() => {
+                    // 结束信号也需要JSON序列化
+                    websocket.send({
+                      data: JSON.stringify(listenEndMessage),
+                      success: () => {
+                        console.log('发送录音结束信号成功');
+                        resolve(true);
+                      },
+                      fail: (err) => {
+                        console.error('发送录音结束信号失败:', err);
+                        reject(err);
+                      }
+                    });
+                  }, 300); // 300ms延迟，确保服务器有时间处理音频数据
                 },
                 fail: (err) => {
                   console.error('发送音频数据失败:', err);
@@ -533,42 +559,6 @@ const sendAudioFile = (filePath, progressCallback) => {
       });
     } catch (error) {
       console.error('发送音频过程出错:', error);
-      reject(error);
-    }
-  });
-};
-
-/**
- * 发送监听结束信号
- * @returns {Promise} 发送结果
- */
-const sendListenEndSignal = () => {
-  return new Promise((resolve, reject) => {
-    if (!websocket || !isConnected) {
-      reject('WebSocket未连接');
-      return;
-    }
-    
-    try {
-      const listenEndMessage = {
-        type: 'listen',
-        mode: 'manual',
-        state: 'stop'
-      };
-      
-      websocket.send({
-        data: JSON.stringify(listenEndMessage),
-        success: () => {
-          console.log('发送录音结束信号成功');
-          resolve(true);
-        },
-        fail: (err) => {
-          console.error('发送录音结束信号失败:', err);
-          reject(err);
-        }
-      });
-    } catch (error) {
-      console.error('发送结束信号错误:', error);
       reject(error);
     }
   });

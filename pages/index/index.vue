@@ -305,73 +305,17 @@ export default {
 				title: '发送语音中'
 			});
 			
-			// 直接发送文件内容通过WebSocket
-			uni.getFileSystemManager().readFile({
-				filePath: filePath,
-				success: (res) => {
-					try {
-						// 发送开始信号
-						const startMessage = {
-							type: 'listen',
-							mode: 'manual',
-							state: 'start'
-						};
-						
-						if (xiaozhiService.isConnectedToServer()) {
-							// 发送开始信号
-							uni.sendSocketMessage({
-								data: JSON.stringify(startMessage),
-								success: () => {
-									// 发送音频文件数据
-									uni.sendSocketMessage({
-										data: res.data,
-										success: () => {
-											this.addLog('音频数据发送成功', 'success');
-											
-											// 发送结束信号
-											const endMessage = {
-												type: 'listen',
-												mode: 'manual',
-												state: 'stop'
-											};
-											uni.sendSocketMessage({
-												data: JSON.stringify(endMessage),
-												success: () => {
-													this.addLog('录音结束信号发送成功', 'success');
-												},
-												fail: (err) => {
-													this.addLog(`录音结束信号发送失败: ${JSON.stringify(err)}`, 'error');
-												},
-												complete: () => {
-													uni.hideLoading();
-												}
-											});
-										},
-										fail: (err) => {
-											this.addLog(`音频数据发送失败: ${JSON.stringify(err)}`, 'error');
-											uni.hideLoading();
-										}
-									});
-								},
-								fail: (err) => {
-									this.addLog(`开始信号发送失败: ${JSON.stringify(err)}`, 'error');
-									uni.hideLoading();
-								}
-							});
-						} else {
-							this.addLog('WebSocket未连接，无法发送录音', 'error');
-							uni.hideLoading();
-						}
-					} catch (error) {
-						this.addLog(`发送录音错误: ${error.message}`, 'error');
-						uni.hideLoading();
-					}
-				},
-				fail: (err) => {
-					this.addLog(`读取录音文件失败: ${JSON.stringify(err)}`, 'error');
+			// 使用xiaozhi-service的统一接口发送录音
+			xiaozhiService.sendAudioFile(filePath)
+				.then(() => {
+					this.addLog('音频数据发送成功', 'success');
+				})
+				.catch(error => {
+					this.addLog(`发送录音错误: ${error}`, 'error');
+				})
+				.finally(() => {
 					uni.hideLoading();
-				}
-			});
+				});
 		},
 		
 		// 开始音频可视化
