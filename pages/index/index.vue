@@ -67,7 +67,8 @@
 				scrollTop: 0,
 				logScrollTop: 0,
 				isRecording: false,
-				audioVisualizerData: Array(10).fill(0) // 假设有10个柱状图
+				// 修改这里，避免使用 Array(n).fill() 方法
+				audioVisualizerData: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			}
 		},
 		onLoad() {
@@ -109,37 +110,44 @@
 
 			// 连接到服务器
 			connectToServer() {
-				this.addLog(`正在连接: ${this.serverUrl}`, 'info');
-				this.connectionStatusText = '正在连接...';
+				try {
+					this.addLog(`正在连接: ${this.serverUrl}`, 'info');
+					this.connectionStatusText = '正在连接...';
 
-				xiaozhiService.connectToServer(
-					this.serverUrl,
-					// 连接成功回调
-					() => {
-						this.isConnected = true;
-						this.connectionStatusText = '已连接';
-						this.addLog('已连接到服务器', 'success');
-					},
-					// 消息接收回调
-					(message) => {
-						this.handleServerMessage(message);
-					},
-					// 连接关闭回调
-					() => {
-						this.isConnected = false;
-						this.connectionStatusText = '已断开';
-						this.addLog('已断开连接', 'info');
-					},
-					// 错误回调
-					(error) => {
-						this.isConnected = false;
-						this.connectionStatusText = '连接错误';
-						this.addLog(`连接错误: ${error}`, 'error');
-					}
-				).catch(error => {
-					this.addLog(`连接失败: ${error}`, 'error');
-					this.connectionStatusText = '连接失败';
-				});
+					xiaozhiService.connectToServer(
+						this.serverUrl,
+						// 连接成功回调
+						() => {
+							this.isConnected = true;
+							this.connectionStatusText = '已连接';
+							this.addLog('已连接到服务器', 'success');
+						},
+						// 消息接收回调
+						(message) => {
+							this.handleServerMessage(message);
+						},
+						// 连接关闭回调
+						() => {
+							this.isConnected = false;
+							this.connectionStatusText = '已断开';
+							this.addLog('已断开连接', 'info');
+						},
+						// 错误回调
+						(error) => {
+							this.isConnected = false;
+							this.connectionStatusText = '连接错误';
+							this.addLog(`连接错误: ${error}`, 'error');
+						}
+					).catch(error => {
+						console.error('连接错误:', error);
+						this.addLog(`连接失败: ${error?.message || '未知错误'}`, 'error');
+						this.connectionStatusText = '连接失败';
+					});
+				} catch (err) {
+					console.error('连接过程异常:', err);
+					this.addLog(`连接异常: ${err?.message || '未知异常'}`, 'error');
+					this.connectionStatusText = '连接异常';
+				}
 			},
 
 			// 断开服务器连接
@@ -327,10 +335,12 @@
 
 				// 创建一个新的可视化定时器，模拟音频可视化效果
 				this.visualizerTimer = setInterval(() => {
-					// 创建随机波形数据
-					this.audioVisualizerData = Array(10).fill(0).map(() => {
-						return Math.random() * 80 + 20; // 20-100之间的随机数
-					});
+					// 创建新数组而不是直接修改
+					const newData = [];
+					for (let i = 0; i < 10; i++) {
+						newData.push(Math.random() * 80 + 20); // 20-100之间的随机数
+					}
+					this.audioVisualizerData = newData;
 				}, 100); // 每100ms更新一次
 			},
 
@@ -340,7 +350,8 @@
 					clearInterval(this.visualizerTimer);
 					this.visualizerTimer = null;
 				}
-				this.audioVisualizerData = Array(10).fill(0); // 重置可视化数据
+				// 同样使用明确的数组
+				this.audioVisualizerData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 			},
 
 			// 切换录音状态
