@@ -15,7 +15,13 @@ const ALLOWED_LOCATIONS = [
     name: '苏州大学',
     latitude: 31.3027, 
     longitude: 120.6497,
-    radius: 500  // 允许500米范围内访问
+    radius: 1000  // 允许500米范围内访问
+  },
+  {
+    name: '苏州大学博远',
+    latitude: 31.3083, 
+    longitude: 120.6367,
+    radius: 1000  // 允许500米范围内访问
   }
   // 可以添加更多允许的地点
 ];
