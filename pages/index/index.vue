@@ -16,6 +16,18 @@
 			<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
 		</view>
 
+		<!-- 位置验证部分 -->
+		<view v-if="!isLocationVerified" class="location-verification">
+			<view class="location-status"
+				:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
+				<text>{{ locationStatusText }}</text>
+			</view>
+			<view class="location-details" v-if="locationDetails">
+				<text>{{ locationDetails }}</text>
+			</view>
+			<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
+		</view>
+
 		<!-- 服务器连接部分 -->
 		<view v-if="isLocationVerified" class="connection-section">
 			<view class="connection-header" @click="toggleConnectionPanel">
@@ -71,7 +83,7 @@
 		</view>
 
 		<!-- 录音可视化显示 -->
-		<view v-if="isRecording" class="audio-visualizer">
+		<view v-if="isLocationVerified && isRecording" class="audio-visualizer">
 			<view class="visualizer-bar" v-for="(value, index) in audioVisualizerData" :key="index"
 				:style="{ height: value + '%' }"></view>
 		</view>
@@ -90,6 +102,7 @@
 
 <script>
 	import xiaozhiService from '../../utils/xiaozhi-service.js';
+	import locationService from '../../utils/location-service.js';
 	import locationService from '../../utils/location-service.js';
 
 	export default {
@@ -636,6 +649,48 @@
 
 	.location-denied {
 		color: #ff4d4f;
+	}
+
+	/* 位置验证样式 */
+	.location-verification {
+		background-color: #fff;
+		border-radius: 10rpx;
+		padding: 30rpx 20rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		text-align: center;
+	}
+
+	.location-status {
+		font-size: 32rpx;
+		font-weight: bold;
+		margin-bottom: 20rpx;
+		color: #1890ff;
+	}
+
+	.location-denied {
+		color: #ff4d4f;
+	}
+
+	.location-allowed {
+		color: #52c41a;
+	}
+
+	.location-details {
+		font-size: 28rpx;
+		color: #666;
+		margin-bottom: 30rpx;
+	}
+
+	.location-btn {
+		background-color: #1890ff;
+		color: white;
+		font-size: 28rpx;
+		padding: 0 30rpx;
+		height: 70rpx;
+		line-height: 70rpx;
+		margin: 0 auto;
+		width: 60%;
 	}
 
 	.connection-section {
