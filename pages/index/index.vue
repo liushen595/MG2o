@@ -6,40 +6,54 @@
 
 		<!-- 服务器连接部分 -->
 		<view class="connection-section">
-			<view class="connection-header">
-				<text>WebSocket连接</text>
-				<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText }}</text>
+			<view class="connection-header" @click="toggleConnectionPanel">
+				<view class="connection-title">
+					<text>连接服务</text>
+					<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText }}</text>
+				</view>
+				<view class="toggle-arrow" :class="{ expanded: showConnectionPanel }">
+					<view class="triangle"></view>
+				</view>
 			</view>
-			<view class="connection-form">
+			<view class="connection-form" v-if="showConnectionPanel">
 				<input class="server-input" v-model="serverUrl" placeholder="WebSocket服务器地址" />
-				<button class="connect-btn" @click="toggleConnection">{{ isConnected ? '断开' : '连接' }}</button>
+				<button class="connect-btn" :class="{ 'disconnect-btn': isConnected }" @click="toggleConnection">
+					{{ isConnected ? '断开' : '连接' }}
+				</button>
 			</view>
 		</view>
 
 		<!-- 消息记录部分 -->
 		<scroll-view class="conversation" scroll-y="true" :scroll-top="scrollTop">
-			<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }">
-				<text>{{ msg.text }}</text>
-			</view>
+			<view class="conversation-inner">
+				<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }">
+					<text>{{ msg.text }}</text>
+				</view>
 
-			<!-- 加载动画 -->
-			<view v-if="isLoading" class="loading-container">
-				<view class="loading-dots">
-					<view class="dot dot1"></view>
-					<view class="dot dot2"></view>
-					<view class="dot dot3"></view>
+				<!-- 加载动画 -->
+				<view v-if="isLoading" class="loading-container">
+					<view class="loading-dots">
+						<view class="dot dot1"></view>
+						<view class="dot dot2"></view>
+						<view class="dot dot3"></view>
+					</view>
 				</view>
 			</view>
 		</scroll-view>
 
 		<!-- 消息输入部分 -->
 		<view class="message-input-container">
-			<input class="message-input" v-model="messageText" placeholder="输入消息..." :disabled="!isConnected"
-				@confirm="sendMessage" />
-			<button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageText.trim()">发送</button>
+			<view class="input-wrapper">
+				<input class="message-input" v-model="messageText" placeholder="输入消息..." :disabled="!isConnected"
+					@confirm="sendMessage" />
+				<button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageText.trim()">
+					<view class="send-icon"></view>
+				</button>
+			</view>
 			<button class="record-btn" @click="toggleRecording" :disabled="!isConnected"
 				:class="{ recording: isRecording }">
-				{{ isRecording ? '停止录音' : '录音' }}
+				<view class="mic-icon"></view>
+				<text>{{ isRecording ? '停止' : '录音' }}</text>
 			</button>
 		</view>
 
@@ -77,12 +91,16 @@
 				logScrollTop: 0,
 				isRecording: false,
 				isLaoding: false,
-				audioVisualizerData: Array(10).fill(0) // 假设有10个柱状图
+				audioVisualizerData: Array(10).fill(0), // 假设有10个柱状图
+				showConnectionPanel: false // 控制连接面板是否展开
 			}
 		},
 		onLoad() {
 			// 添加初始日志
 			this.addLog('准备就绪，请连接服务器开始测试...', 'info');
+
+			// 自动连接服务器
+			this.connectToServer();
 
 			// 初始化录音管理器
 			xiaozhiService.initRecorder(
@@ -115,6 +133,11 @@
 				} else {
 					this.connectToServer();
 				}
+			},
+
+			// 切换连接面板的显示状态
+			toggleConnectionPanel() {
+				this.showConnectionPanel = !this.showConnectionPanel;
 			},
 
 			// 连接到服务器
@@ -390,58 +413,267 @@
 <style>
 	.container {
 		padding: 20rpx;
-		background-color: #f5f5f5;
-		height: 100vh;
+		background-color: #f8f9fa;
+		max-height: 95vh;
+		height: 95vh;
 		display: flex;
 		flex-direction: column;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 	}
 
 	.header {
 		text-align: center;
 		margin-bottom: 20rpx;
+		padding: 15rpx 0;
 	}
 
 	.title {
-		font-size: 36rpx;
+		font-size: 38rpx;
 		font-weight: bold;
 		color: #333;
+		text-shadow: 0 1rpx 2rpx rgba(0,0,0,0.1);
+		letter-spacing: 1rpx;
 	}
 
 	.connection-section {
 		background-color: #fff;
-		border-radius: 10rpx;
+		border-radius: 16rpx;
 		padding: 20rpx;
 		margin-bottom: 20rpx;
-		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+		transition: all 0.3s ease;
+		border: 1rpx solid #eaeaea;
 	}
 
 	.connection-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 20rpx;
+		cursor: pointer;
+		padding: 10rpx 5rpx;
+	}
+
+	.connection-title {
+		display: flex;
+		align-items: center;
+		gap: 16rpx;
+		font-weight: 500;
+		font-size: 30rpx;
+		color: #444;
+	}
+
+	.toggle-arrow {
+		width: 32rpx;
+		height: 32rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: transform 0.3s ease;
+		opacity: 0.6;
+	}
+
+	.triangle {
+		width: 0;
+		height: 0;
+		border-left: 8rpx solid transparent;
+		border-right: 8rpx solid transparent;
+		border-top: 12rpx solid #666;
+	}
+
+	.toggle-arrow.expanded {
+		transform: rotate(180deg);
 	}
 
 	.connection-status {
-		font-size: 24rpx;
+		font-size: 26rpx;
+		padding: 4rpx 14rpx;
+		border-radius: 50rpx;
+		background-color: #fff2f0;
 		color: #ff4d4f;
+		font-weight: normal;
 	}
 
 	.connection-status.connected {
+		background-color: #f6ffed;
 		color: #52c41a;
+	}
+
+	.conversation {
+		flex: 1;
+		background-color: #fff;
+		border-radius: 16rpx;
+		padding: 20rpx;
+		margin-bottom: 20rpx;
+		max-width: 672rpx;
+		max-height: 65vh;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+		border: 1rpx solid #eaeaea;
+		position: relative;
+	}
+
+	.conversation-inner {
+		padding: 10rpx;
+		min-height: 100%;
+	}
+
+	.message {
+		max-width: 85%;
+		padding: 18rpx 24rpx;
+		border-radius: 18rpx;
+		margin-bottom: 24rpx;
+		word-break: break-word;
+		position: relative;
+		line-height: 1.5;
+		font-size: 28rpx;
+		box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+		animation: fadeIn 0.3s ease;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(10rpx);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.message.user {
+		background-color: #e3f2fd;
+		margin-left: auto;
+		text-align: right;
+		border-bottom-right-radius: 4rpx;
+		color: #0d47a1;
+	}
+
+	.message:not(.user) {
+		background-color: #f5f5f5;
+		margin-right: auto;
+		border-bottom-left-radius: 4rpx;
+		color: #333;
+	}
+
+	.message.user::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		right: -10rpx;
+		width: 0;
+		height: 0;
+		border-left: 10rpx solid transparent;
+		border-right: 10rpx solid transparent;
+		border-bottom: 15rpx solid #e3f2fd;
+		transform: rotate(45deg);
+	}
+
+	.message:not(.user)::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: -10rpx;
+		width: 0;
+		height: 0;
+		border-left: 10rpx solid transparent;
+		border-right: 10rpx solid transparent;
+		border-bottom: 15rpx solid #f5f5f5;
+		transform: rotate(-45deg);
+	}
+
+	.message-input-container {
+		display: flex;
+		gap: 16rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.input-wrapper {
+		flex: 1;
+		position: relative;
+		display: flex;
+		align-items: center;
+		background-color: #fff;
+		border-radius: 12rpx;
+		padding: 0 5rpx 0 20rpx;
+		box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.07);
+		border: 1rpx solid #e8e8e8;
+	}
+
+	.message-input {
+		flex: 1;
+		padding: 15rpx 0;
+		font-size: 28rpx;
+		border: none;
+		background-color: transparent;
+	}
+
+	.send-btn {
+		width: 70rpx;
+		height: 70rpx;
+		border-radius: 35rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: #1890ff;
+		transition: all 0.3s;
+		border: none;
+		padding: 0;
+		margin: 3rpx;
+	}
+
+	.send-btn:active {
+		transform: scale(0.95);
+		background-color: #096dd9;
+	}
+
+	.send-btn[disabled] {
+		background-color: #d9d9d9;
+		opacity: 0.5;
+	}
+
+	.send-icon {
+		width: 0;
+		height: 0;
+		border-top: 10rpx solid transparent;
+		border-bottom: 10rpx solid transparent;
+		border-left: 16rpx solid white;
+		margin-left: 5rpx;
 	}
 
 	.connection-form {
 		display: flex;
 		gap: 20rpx;
+		margin-top: 15rpx;
+		padding-top: 15rpx;
+		border-top: 1rpx solid #f0f0f0;
+		animation: slideDown 0.3s ease;
+	}
+
+	@keyframes slideDown {
+		from {
+			opacity: 0;
+			transform: translateY(-10rpx);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.server-input {
 		flex: 1;
-		padding: 10rpx 20rpx;
-		border: 1px solid #ddd;
-		border-radius: 5rpx;
+		padding: 15rpx 20rpx;
+		border: 1rpx solid #e8e8e8;
+		border-radius: 8rpx;
 		font-size: 28rpx;
+		background-color: #fafafa;
+		transition: all 0.3s;
+	}
+
+	.server-input:focus {
+		border-color: #40a9ff;
+		background-color: #fff;
+		box-shadow: 0 0 0 2rpx rgba(24, 144, 255, 0.2);
 	}
 
 	.connect-btn {
@@ -451,67 +683,49 @@
 		padding: 0 30rpx;
 		height: 70rpx;
 		line-height: 70rpx;
+		border-radius: 8rpx;
+		border: none;
+		transition: all 0.3s;
+		box-shadow: 0 2rpx 5rpx rgba(24, 144, 255, 0.2);
 	}
 
-	.conversation {
-		flex: 1;
-		background-color: #fff;
-		border-radius: 10rpx;
-		padding: 20rpx;
-		margin-bottom: 20rpx;
-		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+	.connect-btn:active {
+		background-color: #096dd9;
 	}
 
-	.message {
-		max-width: 80%;
-		padding: 16rpx 24rpx;
-		border-radius: 16rpx;
-		margin-bottom: 20rpx;
-		word-break: break-word;
+	.disconnect-btn {
+		background-color: #ff4d4f;
+		box-shadow: 0 2rpx 5rpx rgba(255, 77, 79, 0.2);
 	}
 
-	.message.user {
-		background-color: #e2f2ff;
-		margin-left: auto;
-		text-align: right;
-	}
-
-	.message:not(.user) {
-		background-color: #f0f0f0;
-		margin-right: auto;
-	}
-
-	.message-input-container {
-		display: flex;
-		gap: 20rpx;
-		margin-bottom: 20rpx;
-	}
-
-	.message-input {
-		flex: 1;
-		padding: 10rpx 20rpx;
-		border: 1px solid #ddd;
-		border-radius: 5rpx;
-		font-size: 28rpx;
-	}
-
-	.send-btn {
-		background-color: #1890ff;
-		color: white;
-		font-size: 28rpx;
-		padding: 0 30rpx;
-		height: 70rpx;
-		line-height: 70rpx;
+	.disconnect-btn:active {
+		background-color: #cf1322;
 	}
 
 	.record-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8rpx;
 		background-color: #52c41a;
 		color: white;
 		font-size: 28rpx;
-		padding: 0 30rpx;
-		height: 70rpx;
-		line-height: 70rpx;
+		height: 76rpx;
+		padding: 0 25rpx;
+		border-radius: 12rpx;
 		transition: all 0.3s;
+		border: none;
+		box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.07);
+	}
+
+	.record-btn:active {
+		transform: scale(0.97);
+		background-color: #389e0d;
+	}
+
+	.record-btn[disabled] {
+		background-color: #d9d9d9;
+		opacity: 0.5;
 	}
 
 	.record-btn.recording {
@@ -519,17 +733,66 @@
 		animation: pulse 1.5s infinite;
 	}
 
+	.mic-icon {
+		width: 32rpx;
+		height: 32rpx;
+		border-radius: 50%;
+		background-color: white;
+		position: relative;
+	}
+
+	.mic-icon::before {
+		content: '';
+		position: absolute;
+		width: 16rpx;
+		height: 16rpx;
+		background-color: currentColor;
+		border-radius: 50%;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+	}
+
+	.mic-icon::after {
+		content: '';
+		position: absolute;
+		width: 10rpx;
+		height: 10rpx;
+		border: 2rpx solid currentColor;
+		border-radius: 50%;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		animation: ripple 1.5s infinite;
+		opacity: 0;
+	}
+
+	.recording .mic-icon::after {
+		opacity: 1;
+	}
+
 	@keyframes pulse {
 		0% {
 			background-color: #ff4d4f;
 		}
-
 		50% {
 			background-color: #ff7875;
 		}
-
 		100% {
 			background-color: #ff4d4f;
+		}
+	}
+
+	@keyframes ripple {
+		0% {
+			width: 0;
+			height: 0;
+			opacity: 1;
+		}
+		100% {
+			width: 24rpx;
+			height: 24rpx;
+			opacity: 0;
 		}
 	}
 
@@ -537,46 +800,111 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-end;
-		height: 100rpx;
-		margin: 20rpx 0;
-		padding: 10rpx;
-		background-color: #f9f9f9;
-		border-radius: 10rpx;
+		height: 120rpx;
+		margin-bottom: 20rpx;
+		padding: 15rpx;
+		background-color: rgba(255, 255, 255, 0.9);
+		border-radius: 16rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+		border: 1rpx solid #eaeaea;
+		animation: fadeIn 0.3s ease;
 	}
 
 	.visualizer-bar {
 		width: 9%;
-		height: 20%;
 		background: linear-gradient(to top, #52c41a, #1890ff);
-		border-radius: 3rpx;
+		border-radius: 6rpx;
 		transition: height 0.1s ease;
 	}
 
+	/* 加载动画容器 */
+	.loading-container {
+		margin-right: auto;
+		margin-bottom: 24rpx;
+		padding: 16rpx 24rpx;
+		background-color: #f5f5f5;
+		border-radius: 16rpx;
+		display: flex;
+		align-items: center;
+		height: auto;
+		min-height: 60rpx;
+		animation: fadeIn 0.3s ease;
+		box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+	}
+
+	/* 加载点容器 */
+	.loading-dots {
+		display: flex;
+		align-items: center;
+		gap: 10rpx;
+	}
+
+	/* 单个点样式 */
+	.dot {
+		width: 12rpx;
+		height: 12rpx;
+		border-radius: 50%;
+		background-color: #1890ff;
+		opacity: 0.6;
+	}
+
+	/* 三个点的动画延迟 */
+	.dot1 {
+		animation: bounce 1.4s infinite ease-in-out;
+	}
+
+	.dot2 {
+		animation: bounce 1.4s infinite ease-in-out 0.2s;
+	}
+
+	.dot3 {
+		animation: bounce 1.4s infinite ease-in-out 0.4s;
+	}
+
+	/* 弹跳效果动画 */
+	@keyframes bounce {
+		0%, 100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-10rpx);
+		}
+	}
+
+	/* 日志部分样式 */
 	.log-container {
 		background-color: #fff;
-		border-radius: 10rpx;
+		border-radius: 16rpx;
 		padding: 20rpx;
-		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+		border: 1rpx solid #eaeaea;
 		height: 300rpx;
 		display: flex;
 		flex-direction: column;
+		margin-top: 10rpx;
 	}
 
 	.log-title {
 		font-size: 28rpx;
-		font-weight: bold;
-		margin-bottom: 10rpx;
+		font-weight: 500;
+		margin-bottom: 15rpx;
+		color: #444;
 	}
 
 	.log-content {
 		flex: 1;
 		font-family: monospace;
 		font-size: 24rpx;
+		background-color: #fafafa;
+		border-radius: 8rpx;
+		padding: 10rpx;
 	}
 
 	.log-entry {
-		margin: 5rpx 0;
+		margin: 8rpx 0;
 		line-height: 1.5;
+		padding: 4rpx 8rpx;
+		border-radius: 4rpx;
 	}
 
 	.log-entry.info {
@@ -585,68 +913,16 @@
 
 	.log-entry.error {
 		color: #ff4d4f;
+		background-color: rgba(255, 77, 79, 0.1);
 	}
 
 	.log-entry.success {
 		color: #52c41a;
+		background-color: rgba(82, 196, 26, 0.1);
 	}
 
 	.log-entry.warning {
 		color: #faad14;
-	}
-
-	/* 加载动画容器 */
-	.loading-container {
-		margin-right: auto;
-		margin-bottom: 20rpx;
-		padding: 16rpx 24rpx;
-		background-color: #f0f0f0;
-		border-radius: 16rpx;
-		display: flex;
-		align-items: center;
-	}
-
-	/* 加载点容器 */
-	.loading-dots {
-		display: flex;
-		align-items: center;
-		gap: 8rpx;
-	}
-
-	/* 单个点样式 */
-	.dot {
-		width: 8rpx;
-		height: 8rpx;
-		border-radius: 50%;
-		background-color: #999;
-		opacity: 0.6;
-	}
-
-	/* 三个点的动画延迟 */
-	.dot1 {
-		animation: breathe 1.5s infinite ease-in-out;
-	}
-
-	.dot2 {
-		animation: breathe 1.5s infinite ease-in-out 0.5s;
-	}
-
-	.dot3 {
-		animation: breathe 1.5s infinite ease-in-out 1s;
-	}
-
-	/* 呼吸效果动画 */
-	@keyframes breathe {
-
-		0%,
-		100% {
-			opacity: 0.2;
-			transform: scale(0.8);
-		}
-
-		50% {
-			opacity: 1;
-			transform: scale(1.2);
-		}
+		background-color: rgba(250, 173, 20, 0.1);
 	}
 </style>
