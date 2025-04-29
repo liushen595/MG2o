@@ -9,7 +9,8 @@
 			<view class="connection-header" @click="toggleConnectionPanel">
 				<view class="connection-title">
 					<text>连接服务</text>
-					<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText }}</text>
+					<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText
+					}}</text>
 				</view>
 				<view class="toggle-arrow" :class="{ expanded: showConnectionPanel }">
 					<view class="triangle"></view>
@@ -431,7 +432,7 @@
 		font-size: 38rpx;
 		font-weight: bold;
 		color: #333;
-		text-shadow: 0 1rpx 2rpx rgba(0,0,0,0.1);
+		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.1);
 		letter-spacing: 1rpx;
 	}
 
@@ -534,6 +535,7 @@
 			opacity: 0;
 			transform: translateY(10rpx);
 		}
+
 		to {
 			opacity: 1;
 			transform: translateY(0);
@@ -608,8 +610,8 @@
 	}
 
 	.send-btn {
-		width: 70rpx;
-		height: 70rpx;
+		width: 68rpx;
+		height: 68rpx;
 		border-radius: 35rpx;
 		display: flex;
 		align-items: center;
@@ -627,7 +629,7 @@
 	}
 
 	.send-btn[disabled] {
-		background-color: #d9d9d9;
+		background-color: #c2c1c1;
 		opacity: 0.5;
 	}
 
@@ -654,6 +656,7 @@
 			opacity: 0;
 			transform: translateY(-10rpx);
 		}
+
 		to {
 			opacity: 1;
 			transform: translateY(0);
@@ -775,9 +778,11 @@
 		0% {
 			background-color: #ff4d4f;
 		}
+
 		50% {
 			background-color: #ff7875;
 		}
+
 		100% {
 			background-color: #ff4d4f;
 		}
@@ -789,6 +794,7 @@
 			height: 0;
 			opacity: 1;
 		}
+
 		100% {
 			width: 24rpx;
 			height: 24rpx;
@@ -863,9 +869,12 @@
 
 	/* 弹跳效果动画 */
 	@keyframes bounce {
-		0%, 100% {
+
+		0%,
+		100% {
 			transform: translateY(0);
 		}
+
 		50% {
 			transform: translateY(-10rpx);
 		}
