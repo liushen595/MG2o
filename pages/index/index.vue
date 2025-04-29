@@ -28,6 +28,20 @@
 		</view>
 		
 		<!-- 消息记录部分 -->
+		<scroll-view class="conversation" scroll-y="true" :scroll-top="scrollTop">
+			<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }">
+				<text>{{ msg.text }}</text>
+			</view>
+
+			<!-- 加载动画 -->
+			<view v-if="isLoading" class="loading-container">
+				<view class="loading-dots">
+					<view class="dot dot1"></view>
+					<view class="dot dot2"></view>
+					<view class="dot dot3"></view>
+				</view>
+			</view>
+		</scroll-view>
 		<scroll-view v-if="isLocationVerified" class="conversation" scroll-y="true" :scroll-top="scrollTop">
 			<view v-for="(msg, index) in messages" :key="index" class="message" :class="{user: msg.isUser}">
 				<text>{{msg.text}}</text>
@@ -75,6 +89,7 @@ export default {
 			messages: [],
 			logs: [],
 			scrollTop: 0,
+			isLoading: false,
 			logScrollTop: 0,
 			isRecording: false,
 			audioVisualizerData: Array(10).fill(0), // 假设有10个柱状图
@@ -290,6 +305,8 @@ export default {
 			this.isConnected = false;
 			this.connectionStatusText = '已断开';
 			this.addLog('已断开连接', 'info');
+			//断开连接时隐藏加载动画
+			this.isLoading = false;
 		},
 		
 		// 发送消息
@@ -301,10 +318,13 @@ export default {
 			
 			// 添加到消息列表
 			this.addMessage(message, true);
-			
+			//显示加载动画
+			this.isLoading = true;
 			// 发送到服务器
 			xiaozhiService.sendTextMessage(message).catch(error => {
 				this.addLog(`发送失败: ${error}`, 'error');
+				//发送失败时隐藏加载动画
+				this.isLoading = false;
 			});
 			
 			// 清空输入框
@@ -315,20 +335,25 @@ export default {
 		handleServerMessage(message) {
 			if (message.type === 'hello') {
 				this.addLog(`服务器回应: ${message.message}`, 'info');
+				//隐藏加载动画
+				this.isLoading = false;
 			} else if (message.type === 'tts') {
 				// TTS状态消息
 				if (message.state === 'start') {
 					this.addLog('服务器开始发送语音', 'info');
 				} else if (message.state === 'sentence_start') {
 					this.addLog(`服务器发送语音段: ${message.text}`, 'info');
-					// 添加文本到会话记录
+					// 添加文本到会话记录,隐藏加载动画
 					if (message.text) {
 						this.addMessage(message.text, false);
+						this.isLoading = false;  
 					}
 				} else if (message.state === 'sentence_end') {
 					this.addLog(`语音段结束: ${message.text}`, 'info');
 				} else if (message.state === 'stop') {
 					this.addLog('服务器语音传输结束', 'info');
+					// 隐藏加载动画
+					this.isLoading = false;
 				}
 			} else if (message.type === 'stt') {
 				// 语音识别结果
@@ -339,10 +364,14 @@ export default {
 				// 添加大模型回复到会话记录
 				if (message.text && message.text !== '😊') {
 					this.addMessage(message.text, false);
+					// 隐藏加载动画
+					this.isLoading = false;
 				}
 			} else {
 				// 未知消息类型
 				this.addLog(`未知消息类型: ${message.type}`, 'info');
+				//隐藏加载动画
+				this.isLoading = false;
 			}
 		},
 		
@@ -389,6 +418,8 @@ export default {
 			}
 			
 			this.addLog('正在启动录音...', 'info');
+			//立即将录音状态设置为false，避免重复点击
+			this.isRecording = false;
 			
 			// 配置录音参数
 			const options = {
@@ -444,6 +475,9 @@ export default {
 			this.addLog('正在准备发送录音文件...', 'info');
 			this.addMessage('发送语音中...', true);
 			
+			// 显示加载动画
+			this.isLoading = true; 
+
 			// 显示一个加载指示器
 			uni.showLoading({
 				title: '发送语音中'
@@ -456,6 +490,14 @@ export default {
 				})
 				.catch(error => {
 					this.addLog(`发送录音错误: ${error}`, 'error');
+					//发送失败时隐藏加载动画
+					this.isLoading = false;
+					// 显示一个错误提示
+					uni.showToast({
+						title: '发送失败，请重试',
+						icon: 'none',
+						duration: 2000
+					});
 				})
 				.finally(() => {
 					uni.hideLoading();
@@ -744,4 +786,59 @@ export default {
 .log-entry.warning {
 	color: #faad14;
 }
+
+/* 加载动画容器 */
+.loading-container {
+		margin-right: auto;
+		margin-bottom: 20rpx;
+		padding: 16rpx 24rpx;
+		background-color: #f0f0f0;
+		border-radius: 16rpx;
+		display: flex;
+		align-items: center;
+	}
+
+	/* 加载点容器 */
+	.loading-dots {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+	}
+
+	/* 单个点样式 */
+	.dot {
+		width: 8rpx;
+		height: 8rpx;
+		border-radius: 50%;
+		background-color: #999;
+		opacity: 0.6;
+	}
+
+	/* 三个点的动画延迟 */
+	.dot1 {
+		animation: breathe 1.5s infinite ease-in-out;
+	}
+
+	.dot2 {
+		animation: breathe 1.5s infinite ease-in-out 0.5s;
+	}
+
+	.dot3 {
+		animation: breathe 1.5s infinite ease-in-out 1s;
+	}
+
+	/* 呼吸效果动画 */
+	@keyframes breathe {
+
+		0%,
+		100% {
+			opacity: 0.2;
+			transform: scale(0.8);
+		}
+
+		50% {
+			opacity: 1;
+			transform: scale(1.2);
+		}
+	}
 </style>
