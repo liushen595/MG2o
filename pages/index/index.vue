@@ -4,8 +4,20 @@
 			<text class="title">苏博导智能体</text>
 		</view>
 
+		<!-- 位置验证部分 -->
+		<view v-if="!isLocationVerified" class="location-verification">
+			<view class="location-status"
+				:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
+				<text>{{ locationStatusText }}</text>
+			</view>
+			<view class="location-details" v-if="locationDetails">
+				<text>{{ locationDetails }}</text>
+			</view>
+			<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
+		</view>
+
 		<!-- 服务器连接部分 -->
-		<view class="connection-section">
+		<view v-if="isLocationVerified" class="connection-section">
 			<view class="connection-header" @click="toggleConnectionPanel">
 				<view class="connection-title">
 					<text>连接服务</text>
@@ -78,6 +90,7 @@
 
 <script>
 	import xiaozhiService from '../../utils/xiaozhi-service.js';
+	import locationService from '../../utils/location-service.js';
 
 	export default {
 		data() {
@@ -95,15 +108,22 @@
 				audioVisualizerData: Array(10).fill(0), // 假设有10个柱状图
 				showConnectionPanel: false, // 控制连接面板是否展开
 				responseTimeoutId: null, // 响应超时计时器ID
-				responseTimeoutDuration: 10000 // 响应超时时间，默认10秒
+				responseTimeoutDuration: 10000, // 响应超时时间，默认10秒
+
+				// 位置验证相关数据
+				isLocationVerified: false,
+				isCheckingLocation: false,
+				locationError: false,
+				locationStatusText: '请验证您的位置',
+				locationDetails: '此应用只能在特定地点使用',
+				locationBtnText: '验证位置',
+				currentLocation: null,
+				locationCheckInterval: null
 			}
 		},
 		onLoad() {
 			// 添加初始日志
-			this.addLog('准备就绪，请连接服务器开始测试...', 'info');
-
-			// 自动连接服务器
-			this.connectToServer();
+			this.addLog('准备就绪，请先验证位置...', 'info');
 
 			// 初始化录音管理器
 			xiaozhiService.initRecorder(
@@ -127,6 +147,17 @@
 					this.isRecording = false;
 				}
 			);
+		},
+		onShow() {
+			// 每次页面显示时验证位置
+			this.verifyUserLocation();
+
+			// 设置定时检查位置
+			this.startLocationCheck();
+		},
+		onHide() {
+			// 页面隐藏时清除定时器
+			this.stopLocationCheck();
 		},
 		methods: {
 			// 切换连接状态
@@ -445,6 +476,114 @@
 					clearTimeout(this.responseTimeoutId);
 					this.responseTimeoutId = null;
 				}
+			},
+
+			// 验证用户位置
+			async verifyUserLocation() {
+				if (this.isCheckingLocation) return;
+
+				this.isCheckingLocation = true;
+				this.locationStatusText = '正在验证位置...';
+				this.locationBtnText = '验证中...';
+
+				try {
+					const result = await locationService.validateUserLocation();
+
+					this.isCheckingLocation = false;
+
+					if (result.success) {
+						this.isLocationVerified = true;
+						this.locationError = false;
+						this.locationStatusText = '位置验证成功';
+						this.locationDetails = result.message;
+						this.currentLocation = result.location;
+						this.addLog(result.message, 'success');
+					} else {
+						this.isLocationVerified = false;
+						this.locationError = true;
+						this.locationStatusText = '位置验证失败';
+						this.locationDetails = result.message;
+						this.locationBtnText = '重试';
+						this.addLog(result.message, 'error');
+
+						// 如果是权限问题，提示用户打开设置
+						if (result.needPermission) {
+							uni.showModal({
+								title: '需要位置权限',
+								content: '请在设置中开启位置权限以使用本应用',
+								confirmText: '去设置',
+								success: (res) => {
+									if (res.confirm) {
+										locationService.openSetting().then(result => {
+											if (result) {
+												this.verifyUserLocation();
+											}
+										});
+									}
+								}
+							});
+						}
+					}
+
+				} catch (error) {
+					this.isCheckingLocation = false;
+					this.isLocationVerified = false;
+					this.locationError = true;
+					this.locationStatusText = '位置验证出错';
+					this.locationDetails = '无法获取位置信息，请检查权限设置';
+					this.locationBtnText = '重试';
+					this.addLog('位置验证错误: ' + JSON.stringify(error), 'error');
+				}
+			},
+
+			// 开始定时检查位置
+			startLocationCheck() {
+				// 每3分钟检查一次位置
+				this.locationCheckInterval = setInterval(() => {
+					// 只有已验证过位置才进行后续检查
+					if (this.isLocationVerified) {
+						this.checkLocationStillValid();
+					}
+				}, 3 * 60 * 1000);
+			},
+
+			// 停止定时检查
+			stopLocationCheck() {
+				if (this.locationCheckInterval) {
+					clearInterval(this.locationCheckInterval);
+					this.locationCheckInterval = null;
+				}
+			},
+
+			// 检查位置是否仍然有效
+			async checkLocationStillValid() {
+				try {
+					const location = await locationService.getCurrentLocation();
+					const validationResult = locationService.validateLocation(location);
+
+					if (!validationResult.isAllowed) {
+						this.isLocationVerified = false;
+						this.locationError = true;
+						this.locationStatusText = '位置已更改';
+						this.locationDetails = `您已离开允许的区域，请返回${validationResult.nearestLocation.name}`;
+						this.locationBtnText = '重新验证';
+						this.addLog('用户已离开允许区域，应用已锁定', 'warning');
+
+						// 如果正在连接，断开连接
+						if (this.isConnected) {
+							this.disconnectFromServer();
+						}
+
+						// 显示提示
+						uni.showToast({
+							title: '您已离开允许区域',
+							icon: 'none',
+							duration: 3000
+						});
+					}
+				} catch (error) {
+					console.error('检查位置有效性失败:', error);
+				}
 			}
 		}
 	}
@@ -473,6 +612,30 @@
 		color: #333;
 		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.1);
 		letter-spacing: 1rpx;
+	}
+
+	.location-verification {
+		background-color: #fff;
+		border-radius: 16rpx;
+		padding: 20rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+		transition: all 0.3s ease;
+		border: 1rpx solid #eaeaea;
+		text-align: center;
+	}
+
+	.location-status {
+		font-size: 30rpx;
+		margin-bottom: 10rpx;
+	}
+
+	.location-allowed {
+		color: #52c41a;
+	}
+
+	.location-denied {
+		color: #ff4d4f;
 	}
 
 	.connection-section {
