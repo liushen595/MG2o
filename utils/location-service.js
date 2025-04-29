@@ -7,19 +7,19 @@
 const ALLOWED_LOCATIONS = [
   {
     name: '苏州科技园',
-    latitude: 31.2959, 
+    latitude: 31.2959,
     longitude: 120.5912,
     radius: 1000 // 允许1公里范围内访问
   },
   {
     name: '苏州大学',
-    latitude: 31.3027, 
+    latitude: 31.3027,
     longitude: 120.6497,
     radius: 1000  // 允许500米范围内访问
   },
   {
     name: '苏州大学博远',
-    latitude: 31.3083, 
+    latitude: 31.3083,
     longitude: 120.6367,
     radius: 1000  // 允许500米范围内访问
   }
@@ -38,10 +38,10 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371000; // 地球半径，单位：米
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
 
@@ -199,7 +199,7 @@ const validateUserLocation = async () => {
   try {
     // 检查权限
     const hasPermission = await checkLocationPermission();
-    
+
     if (!hasPermission) {
       console.log('没有位置权限，尝试请求...');
       // 请求权限
@@ -221,14 +221,14 @@ const validateUserLocation = async () => {
         };
       }
     }
-    
+
     // 获取位置
     try {
       const location = await getCurrentLocation();
-      
+
       // 验证位置
       const validationResult = validateLocation(location);
-      
+
       if (validationResult.isAllowed) {
         return {
           success: true,
@@ -254,7 +254,7 @@ const validateUserLocation = async () => {
           error: locError
         };
       }
-      
+
       return {
         success: false,
         message: '获取位置失败，请检查GPS是否开启',
