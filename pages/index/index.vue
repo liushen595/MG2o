@@ -91,9 +91,11 @@
 				scrollTop: 0,
 				logScrollTop: 0,
 				isRecording: false,
-				isLaoding: false,
+				isLoading: false,
 				audioVisualizerData: Array(10).fill(0), // 假设有10个柱状图
-				showConnectionPanel: false // 控制连接面板是否展开
+				showConnectionPanel: false, // 控制连接面板是否展开
+				responseTimeoutId: null, // 响应超时计时器ID
+				responseTimeoutDuration: 10000 // 响应超时时间，默认10秒
 			}
 		},
 		onLoad() {
@@ -200,11 +202,16 @@
 				// 显示加载动画
 				this.isLoading = true;
 
+				// 设置响应超时计时器
+				this.startResponseTimeout();
+
 				// 发送到服务器
 				xiaozhiService.sendTextMessage(message).catch(error => {
 					this.addLog(`发送失败: ${error}`, 'error');
 					// 发送失败时隐藏加载动画
 					this.isLoading = false;
+					// 清除响应超时计时器
+					this.clearResponseTimeout();
 				});
 
 				// 清空输入框
@@ -213,6 +220,9 @@
 
 			// 处理服务器消息
 			handleServerMessage(message) {
+				// 收到任何服务器消息时，清除响应超时计时器
+				this.clearResponseTimeout();
+
 				if (message.type === 'hello') {
 					this.addLog(`服务器回应: ${message.message}`, 'info');
 					// 隐藏加载动画
@@ -354,6 +364,8 @@
 			sendRecordFile(filePath) {
 				this.addLog('正在准备发送录音文件...', 'info');
 
+				this.startResponseTimeout(); // 开始响应超时计时器
+
 				// 显示加载动画
 				this.isLoading = true;
 
@@ -405,6 +417,33 @@
 					this.stopRecording();
 				} else {
 					this.startRecording();
+				}
+			},
+
+			// 开始响应超时
+			startResponseTimeout() {
+				this.clearResponseTimeout(); // 清除已有的超时计时器
+				this.responseTimeoutId = setTimeout(() => {
+					this.addLog('服务器响应超时', 'error');
+					this.isLoading = false; // 隐藏加载动画
+
+					// 向用户显示超时提示信息
+					this.addMessage('抱歉，服务器长时间未响应，请稍后再试', false);
+
+					// 显示提示框
+					uni.showToast({
+						title: '服务器未响应',
+						icon: 'none',
+						duration: 2000
+					});
+				}, this.responseTimeoutDuration);
+			},
+
+			// 清除响应超时
+			clearResponseTimeout() {
+				if (this.responseTimeoutId) {
+					clearTimeout(this.responseTimeoutId);
+					this.responseTimeoutId = null;
 				}
 			}
 		}
