@@ -16,17 +16,6 @@
 			<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
 		</view>
 
-		<!-- 位置验证部分 -->
-		<view v-if="!isLocationVerified" class="location-verification">
-			<view class="location-status"
-				:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
-				<text>{{ locationStatusText }}</text>
-			</view>
-			<view class="location-details" v-if="locationDetails">
-				<text>{{ locationDetails }}</text>
-			</view>
-			<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
-		</view>
 
 		<!-- 服务器连接部分 -->
 		<view v-if="isLocationVerified" class="connection-section">
@@ -102,7 +91,6 @@
 
 <script>
 	import xiaozhiService from '../../utils/xiaozhi-service.js';
-	import locationService from '../../utils/location-service.js';
 	import locationService from '../../utils/location-service.js';
 
 	export default {
@@ -511,6 +499,7 @@
 						this.locationDetails = result.message;
 						this.currentLocation = result.location;
 						this.addLog(result.message, 'success');
+						this.connectToServer(); // 位置验证成功后自动连接服务器
 					} else {
 						this.isLocationVerified = false;
 						this.locationError = true;
