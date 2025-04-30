@@ -51,11 +51,19 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
  */
 const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
-    // 兼容微信小程序和其他平台
+    // 构建定位参数，iOS小程序不支持高精度选项
+    const locOptions = { type: 'gcj02' };
+    try {
+      const sysInfo = uni.getSystemInfoSync();
+      if (sysInfo.platform !== 'ios') {
+        locOptions.isHighAccuracy = true;
+        locOptions.highAccuracyExpireTime = 3000;
+      }
+    } catch (e) {
+      // 获取系统信息失败时保留基础参数
+    }
     uni.getLocation({
-      type: 'gcj02', // 使用国测局坐标系（微信小程序要求）
-      isHighAccuracy: true, // 开启高精度定位
-      highAccuracyExpireTime: 3000, // 高精度定位超时时间，单位ms
+      ...locOptions,
       success: (res) => {
         console.log('位置获取成功:', res);
         resolve({

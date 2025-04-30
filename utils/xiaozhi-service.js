@@ -301,56 +301,48 @@ const playNextInQueue = () => {
   isPlaying = true;
   const mp3Data = audioQueue.shift();
 
-  // 使用微信小程序的音频API播放
   const innerAudioContext = uni.createInnerAudioContext();
-
-  // 将ArrayBuffer转换为临时文件
   const fs = uni.getFileSystemManager();
   const tempFilePath = `${uni.env.USER_DATA_PATH}/temp_audio_${Date.now()}.mp3`;
 
-  try {
-    fs.writeFileSync(tempFilePath, mp3Data);
+  // 异步写入文件并播放
+  fs.writeFile({
+    filePath: tempFilePath,
+    data: mp3Data,
+    encoding: 'binary',
+    success: () => {
+      innerAudioContext.src = tempFilePath;
+      innerAudioContext.autoplay = true;
 
-    innerAudioContext.src = tempFilePath;
-    innerAudioContext.autoplay = true;
+      innerAudioContext.onPlay(() => {
+        console.log('音频开始播放');
+      });
 
-    innerAudioContext.onPlay(() => {
-      console.log('音频开始播放');
-    });
+      innerAudioContext.onEnded(() => {
+        console.log('音频播放结束');
+        innerAudioContext.destroy();
 
-    innerAudioContext.onEnded(() => {
-      console.log('音频播放结束');
-      innerAudioContext.destroy();
+        // 删除临时文件
+        fs.unlink({ filePath: tempFilePath, success: () => { }, fail: (e) => console.error('删除临时文件失败:', e) });
 
-      // 删除临时文件
-      try {
-        fs.unlinkSync(tempFilePath);
-      } catch (e) {
-        console.error('删除临时文件失败:', e);
-      }
+        playNextInQueue();
+      });
 
-      // 播放下一个
-      playNextInQueue();
-    });
+      innerAudioContext.onError((err) => {
+        console.error('音频播放错误:', err);
+        innerAudioContext.destroy();
 
-    innerAudioContext.onError((err) => {
-      console.error('音频播放错误:', err);
-      innerAudioContext.destroy();
+        // 删除临时文件
+        fs.unlink({ filePath: tempFilePath, success: () => { }, fail: (e) => console.error('删除临时文件失败:', e) });
 
-      // 删除临时文件
-      try {
-        fs.unlinkSync(tempFilePath);
-      } catch (e) {
-        console.error('删除临时文件失败:', e);
-      }
-
-      // 播放下一个
-      playNextInQueue();
-    });
-  } catch (error) {
-    console.error('创建临时音频文件失败:', error);
-    isPlaying = false;
-  }
+        playNextInQueue();
+      });
+    },
+    fail: (error) => {
+      console.error('创建临时音频文件失败:', error);
+      isPlaying = false;
+    }
+  });
 };
 
 /**
