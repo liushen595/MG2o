@@ -38,9 +38,11 @@
 		</view>
 
 		<!-- 消息记录部分 -->
-		<scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true" :scroll-into-view="lastMessageId">
+		<scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true"
+			:scroll-into-view="lastMessageId">
 			<view class="conversation-inner">
-				<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }" :id="'msg-'+index">
+				<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }"
+					:id="'msg-' + index">
 					<text>{{ msg.text }}</text>
 				</view>
 
@@ -96,7 +98,7 @@
 	export default {
 		data() {
 			return {
-				serverUrl: 'ws://10.10.81.91:8082/xiaozhi/v1/',
+				serverUrl: 'ws://8.130.167.142:8082/xiaozhi/v1/',
 				isConnected: false,
 				connectionStatusText: '未连接',
 				messageText: '',
@@ -758,9 +760,12 @@
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
 		border: 1rpx solid #eaeaea;
 		position: relative;
-		scrollbar-width: none; /* Firefox */
-		-ms-overflow-style: none; /* IE and Edge */
-		-webkit-overflow-scrolling: touch; /* 保持在 iOS 上滚动的流畅性 */
+		scrollbar-width: none;
+		/* Firefox */
+		-ms-overflow-style: none;
+		/* IE and Edge */
+		-webkit-overflow-scrolling: touch;
+		/* 保持在 iOS 上滚动的流畅性 */
 	}
 
 	/* 隐藏滚动条 */

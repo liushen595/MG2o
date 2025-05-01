@@ -314,7 +314,7 @@ const playNextInQueue = () => {
     innerAudioContext.src = tempFilePath;
     innerAudioContext.autoplay = true;
 
-    innerAudioContext.onPlay(() => {
+    innerAudioCxt.onPlay(() => {
       console.log('音频开始播放');
     });
 
@@ -557,7 +557,7 @@ const sendAudioFile = (filePath, progressCallback) => {
                         reject(err);
                       }
                     });
-                  }, 300); // 300ms延迟，确保服务器有时间处理音频数据
+                  }, 3000); // 3000ms延迟，确保服务器有时间处理音频数据
                 },
                 fail: (err) => {
                   console.error('发送音频数据失败:', err);
