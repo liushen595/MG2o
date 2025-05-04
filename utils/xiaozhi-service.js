@@ -12,6 +12,9 @@ let audioContext = null;
 let audioQueue = [];
 let isPlaying = false;
 
+// 添加语音识别结果回调
+let onSpeechRecognitionCallback = null;
+
 /**
  * 连接到小智服务器
  * @param {String} url WebSocket服务器地址
@@ -19,11 +22,15 @@ let isPlaying = false;
  * @param {Function} onMessageCallback 消息接收回调
  * @param {Function} onCloseCallback 连接关闭回调
  * @param {Function} onErrorCallback 错误回调
+ * @param {Function} onSpeechRecognition 语音识别结果回调
  * @returns {Promise} 连接结果
  */
-const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallback, onErrorCallback) => {
+const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallback, onErrorCallback, onSpeechRecognition) => {
   return new Promise((resolve, reject) => {
     try {
+      // 保存语音识别回调函数
+      onSpeechRecognitionCallback = onSpeechRecognition;
+
       // 检查URL格式
       if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
         const error = 'URL格式错误，必须以ws://或wss://开头';
@@ -122,7 +129,14 @@ const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallb
               } else if (message.state === 'stop') {
                 console.log('服务器语音传输结束');
               }
-            } else if (message.type === 'llm') {
+            }else if (message.type === 'stt') {
+              // 语音识别结果
+              console.log('语音识别结果:', message.text);
+              // 如果有语音识别回调，则调用它
+              if (onSpeechRecognitionCallback && message.text) {
+                onSpeechRecognitionCallback(message.text);
+              }
+            }else if (message.type === 'llm') {
               // 大模型回复
               console.log('大模型回复:', message.text);
             }
