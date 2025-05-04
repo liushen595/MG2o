@@ -38,9 +38,11 @@
 		</view>
 
 		<!-- 消息记录部分 -->
-		<scroll-view class="conversation" scroll-y="true" :scroll-top="scrollTop">
+		<scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true"
+			:scroll-into-view="lastMessageId">
 			<view class="conversation-inner">
-				<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }">
+				<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }"
+					:id="'msg-' + index">
 					<text>{{ msg.text }}</text>
 				</view>
 
@@ -107,6 +109,7 @@
 		data() {
 			return {
 				serverUrl: 'ws://8.130.167.142:8082/xiaozhi/v1/',
+				serverUrl: 'ws://8.130.167.142:8082/xiaozhi/v1/',
 				isConnected: false,
 				connectionStatusText: '未连接',
 				messageText: '',
@@ -120,6 +123,7 @@
 				showConnectionPanel: false, // 控制连接面板是否展开
 				responseTimeoutId: null, // 响应超时计时器ID
 				responseTimeoutDuration: 10000, // 响应超时时间，默认10秒
+				lastMessageId: '', // 最后一条消息的ID
 				
 				// 语音识别相关
 				speechRecognitionText: '', // 语音识别结果文本
@@ -344,9 +348,10 @@
 					isUser
 				});
 
-				// 滚动到底部
+				// 设置最后一条消息的ID，触发滚动
 				this.$nextTick(() => {
-					this.scrollTop = 9999999;
+					const lastIndex = this.messages.length - 1;
+					this.lastMessageId = 'msg-' + lastIndex;
 				});
 			},
 
@@ -796,6 +801,21 @@
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
 		border: 1rpx solid #eaeaea;
 		position: relative;
+		scrollbar-width: none;
+		/* Firefox */
+		-ms-overflow-style: none;
+		/* IE and Edge */
+		-webkit-overflow-scrolling: touch;
+		/* 保持在 iOS 上滚动的流畅性 */
+	}
+
+	/* 隐藏滚动条 */
+	.conversation ::-webkit-scrollbar {
+		display: none;
+		width: 0 !important;
+		height: 0 !important;
+		-webkit-appearance: none;
+		background: transparent;
 	}
 
 	.conversation-inner {
@@ -853,7 +873,7 @@
 		border-left: 10rpx solid transparent;
 		border-right: 10rpx solid transparent;
 		border-bottom: 15rpx solid #e3f2fd;
-		transform: rotate(45deg);
+		transform: rotate(0deg);
 	}
 
 	.message:not(.user)::after {
@@ -866,7 +886,7 @@
 		border-left: 10rpx solid transparent;
 		border-right: 10rpx solid transparent;
 		border-bottom: 15rpx solid #f5f5f5;
-		transform: rotate(-45deg);
+		transform: rotate(0deg);
 	}
 
 	.message-input-container {
@@ -1093,6 +1113,7 @@
 		justify-content: space-between;
 		align-items: flex-end;
 		height: 120rpx;
+		min-height: 120rpx;
 		margin-bottom: 20rpx;
 		padding: 15rpx;
 		background-color: rgba(255, 255, 255, 0.9);
@@ -1113,7 +1134,8 @@
 	.loading-container {
 		margin-right: auto;
 		margin-bottom: 24rpx;
-		padding: 16rpx 24rpx;
+		padding: 16rpx 48rpx 16rpx 24rpx;
+		left: -10rpx;
 		background-color: #f5f5f5;
 		border-radius: 16rpx;
 		display: flex;
