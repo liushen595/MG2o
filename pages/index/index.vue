@@ -65,18 +65,27 @@
 				<button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageText.trim()">
 					<view class="send-icon"></view>
 				</button>
-			</view>
-			<button class="record-btn" @click="toggleRecording" :disabled="!isConnected"
-				:class="{ recording: isRecording }">
+			</view>			<button class="record-btn"
+				@touchstart="startTouchRecording"
+				@touchmove="touchMoveRecording"
+				@touchend="endTouchRecording"
+				@touchcancel="cancelTouchRecording"
+				:disabled="!isConnected"
+				:class="{ recording: isRecording, 'cancel-recording': isCancelRecording }">
 				<view class="mic-icon"></view>
-				<text>{{ isRecording ? '停止' : '录音' }}</text>
+				<text>{{ isRecording ? '松开发送' : '按住说话' }}</text>
 			</button>
 		</view>
-
 		<!-- 录音可视化显示 -->
 		<view v-if="isLocationVerified && isRecording" class="audio-visualizer">
 			<view class="visualizer-bar" v-for="(value, index) in audioVisualizerData" :key="index"
 				:style="{ height: value + '%' }"></view>
+				
+			<!-- 录音取消提示 -->
+			<view v-if="isCancelRecording" class="cancel-recording-tip">
+				<view class="cancel-icon"></view>
+				<text>松开手指，取消发送</text>
+			</view>
 		</view>
 
 		 <!-- 识别结果显示 -->
@@ -134,10 +143,14 @@
 				isCheckingLocation: false,
 				locationError: false,
 				locationStatusText: '请验证您的位置',
-				locationDetails: '此应用只能在特定地点使用',
-				locationBtnText: '验证位置',
+				locationDetails: '此应用只能在特定地点使用',				locationBtnText: '验证位置',
 				currentLocation: null,
-				locationCheckInterval: null
+				locationCheckInterval: null,
+				
+				// 触摸录音相关
+				touchStartY: 0, // 记录触摸开始的Y坐标
+				isCancelRecording: false, // 是否处于取消录音状态
+				cancelDistance: 100 // 上滑多少距离取消录音（单位rpx）
 			}
 		},
 		onLoad() {
@@ -477,9 +490,7 @@
 						return Math.random() * 80 + 20; // 20-100之间的随机数
 					});
 				}, 100); // 每100ms更新一次
-			},
-
-			// 停止音频可视化
+			},			// 停止音频可视化
 			stopAudioVisualization() {
 				if (this.visualizerTimer) {
 					clearInterval(this.visualizerTimer);
@@ -488,7 +499,147 @@
 				this.audioVisualizerData = Array(10).fill(0); // 重置可视化数据
 			},
 
-			// 切换录音状态
+			// 触摸开始录音（按下）
+			startTouchRecording(e) {
+				if (!this.isConnected) {
+					this.addLog('请先连接到服务器', 'error');
+					return;
+				}
+
+				// 记录开始触摸的Y坐标
+				this.touchStartY = e.touches[0].clientY;
+				this.isCancelRecording = false;
+				
+				this.addLog('正在启动录音...', 'info');
+
+				// 配置录音参数
+				const options = {
+					duration: 60000, // 最长60秒
+					sampleRate: 16000, // 采样率16kHz，符合服务器要求
+					numberOfChannels: 1, // 单声道
+					encodeBitRate: 64000, // 编码比特率
+					format: 'mp3', // 输出格式，使用mp3确保良好兼容性
+					frameSize: 50 // 指定帧大小
+				};
+
+				const success = xiaozhiService.startRecording(options);
+				if (!success) {
+					this.addLog('录音启动失败', 'error');
+					this.isRecording = false;
+				} else {
+					this.isRecording = true;
+					// 启动录音超时保护
+					this.recordingTimeout = setTimeout(() => {
+						if (this.isRecording) {
+							this.addLog('录音时间过长，自动停止', 'warning');
+							this.stopRecording();
+						}
+					}, 60000);
+					
+					// 震动反馈
+					uni.vibrateShort({
+						success: () => {
+							console.log('震动成功');
+						}
+					});
+				}
+			},
+			
+			// 触摸移动（检测是否上滑取消）
+			touchMoveRecording(e) {
+				if (!this.isRecording) return;
+				
+				const currentY = e.touches[0].clientY;
+				const moveDistance = this.touchStartY - currentY;
+				
+				// rpx 转 px 的近似转换
+				const cancelDistancePx = this.cancelDistance * (uni.getSystemInfoSync().windowWidth / 750);
+				
+				// 判断是否满足取消条件（上滑超过指定距离）
+				if (moveDistance > cancelDistancePx) {
+					if (!this.isCancelRecording) {
+						this.isCancelRecording = true;
+						// 震动反馈
+						uni.vibrateShort();
+					}
+				} else {
+					this.isCancelRecording = false;
+				}
+			},
+			
+			// 触摸结束录音（松开）
+			endTouchRecording() {
+				if (!this.isRecording) return;
+				
+				// 判断是否取消录音
+				if (this.isCancelRecording) {
+					this.cancelRecording();
+				} else {
+					this.finishRecording();
+				}
+			},
+			
+			// 取消触摸录音（触摸被取消，如来电等）
+			cancelTouchRecording() {
+				if (this.isRecording) {
+					this.cancelRecording();
+				}
+			},
+			
+			// 取消录音
+			cancelRecording() {
+				this.addLog('取消录音', 'info');
+				
+				// 重置录音状态
+				this.isRecording = false;
+				this.isCancelRecording = false;
+				
+				// 清除录音超时
+				if (this.recordingTimeout) {
+					clearTimeout(this.recordingTimeout);
+					this.recordingTimeout = null;
+				}
+				
+				// 停止可视化
+				this.stopAudioVisualization();
+				
+				// 停止录音但不发送
+				if (xiaozhiService.isCurrentlyRecording()) {
+					uni.getRecorderManager().stop();
+				}
+				
+				// 震动反馈
+				uni.vibrateShort();
+			},
+			
+			// 完成录音并发送
+			finishRecording() {
+				this.addLog('正在停止录音...', 'info');
+				
+				// 重置录音状态
+				this.isRecording = false;
+				this.isCancelRecording = false;
+				
+				// 清除录音超时
+				if (this.recordingTimeout) {
+					clearTimeout(this.recordingTimeout);
+					this.recordingTimeout = null;
+				}
+				
+				// 停止可视化
+				this.stopAudioVisualization();
+				
+				// 停止录音并发送
+				xiaozhiService.stopRecordingAndSend()
+					.catch(error => {
+						this.addLog(`录音停止错误: ${error}`, 'error');
+					});
+				
+				// 震动反馈
+				uni.vibrateShort();
+			},
+
+			// 切换录音状态（保留此方法用于兼容，但不再使用）
 			toggleRecording() {
 				if (this.isRecording) {
 					this.stopRecording();
@@ -1036,10 +1187,54 @@
 		background-color: #d9d9d9;
 		opacity: 0.5;
 	}
-
 	.record-btn.recording {
 		background-color: #ff4d4f;
 		animation: pulse 1.5s infinite;
+	}
+	
+	.record-btn.cancel-recording {
+		background-color: #ff7875;
+	}
+
+	.cancel-recording-tip {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background-color: rgba(255, 77, 79, 0.9);
+		color: white;
+		padding: 10rpx 20rpx;
+		border-radius: 8rpx;
+		display: flex;
+		align-items: center;
+		gap: 10rpx;
+		font-size: 26rpx;
+		animation: fadeIn 0.2s ease;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+	}
+	
+	.cancel-icon {
+		width: 28rpx;
+		height: 28rpx;
+		position: relative;
+	}
+	
+	.cancel-icon:before, .cancel-icon:after {
+		content: '';
+		position: absolute;
+		width: 100%;
+		height: 4rpx;
+		background-color: white;
+		top: 50%;
+		left: 0;
+	}
+	
+	.cancel-icon:before {
+		transform: translateY(-50%) rotate(45deg);
+	}
+	
+	.cancel-icon:after {
+		transform: translateY(-50%) rotate(-45deg);
 	}
 
 	.mic-icon {
