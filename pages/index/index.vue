@@ -65,7 +65,8 @@
 				<button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageText.trim()">
 					<view class="send-icon"></view>
 				</button>
-			</view>			<button class="record-btn"
+			</view>			
+			<button class="record-btn"
 				@touchstart="startTouchRecording"
 				@touchmove="touchMoveRecording"
 				@touchend="endTouchRecording"
@@ -117,8 +118,7 @@
 	export default {
 		data() {
 			return {
-				serverUrl: 'ws://8.130.167.142:8082/xiaozhi/v1/',
-				serverUrl: 'ws://8.130.167.142:8082/xiaozhi/v1/',
+				serverUrl: 'wss://huisuda.com/xiaozhi/v1/',
 				isConnected: false,
 				connectionStatusText: '未连接',
 				messageText: '',
@@ -150,7 +150,13 @@
 				// 触摸录音相关
 				touchStartY: 0, // 记录触摸开始的Y坐标
 				isCancelRecording: false, // 是否处于取消录音状态
-				cancelDistance: 100 // 上滑多少距离取消录音（单位rpx）
+				cancelDistance: 100, // 上滑多少距离取消录音（单位rpx）
+				recordStartTime: 0, // 录音开始的时间戳
+				minRecordDuration: 1000, // 最短录音时长(毫秒)，少于这个时间视为误触
+				isValidRecording: false, // 是否为有效录音
+
+				//追问
+				isInquiry:false
 			}
 		},
 		onLoad() {
@@ -295,23 +301,26 @@
 					// 隐藏加载动画
 					this.isLoading = false;
 				} else if (message.type === 'tts') {
-					// TTS状态消息
-					if (message.state === 'start') {
-						this.addLog('服务器开始发送语音', 'info');
-					} else if (message.state === 'sentence_start') {
-						this.addLog(`服务器发送语音段: ${message.text}`, 'info');
-						// 添加文本到会话记录，并隐藏加载动画
-						if (message.text) {
-							this.addMessage(message.text, false);
+					if(true){
+							// TTS状态消息
+						if (message.state === 'start') {
+							this.addLog('服务器开始发送语音', 'info');
+						} else if (message.state === 'sentence_start') {
+							this.addLog(`服务器发送语音段: ${message.text}`, 'info');
+							// 添加文本到会话记录，并隐藏加载动画
+							if (message.text) {
+								this.addMessage(message.text, false);
+								this.isLoading = false;
+							}
+						} else if (message.state === 'sentence_end') {
+							this.addLog(`语音段结束: ${message.text}`, 'info');
+						} else if (message.state === 'stop') {
+							this.addLog('服务器语音传输结束', 'info');
+							// 确保隐藏加载动画
 							this.isLoading = false;
 						}
-					} else if (message.state === 'sentence_end') {
-						this.addLog(`语音段结束: ${message.text}`, 'info');
-					} else if (message.state === 'stop') {
-						this.addLog('服务器语音传输结束', 'info');
-						// 确保隐藏加载动画
-						this.isLoading = false;
 					}
+					
 				} else if (message.type === 'stt') {
 					// 语音识别结果
 					this.addLog(`识别结果: ${message.text}`, 'info');
@@ -506,9 +515,19 @@
 					return;
 				}
 
-				// 记录开始触摸的Y坐标
+				// 如果已经在录音，先停止之前的录音
+				if (this.isRecording || xiaozhiService.isCurrentlyRecording()) {
+					this.addLog('检测到录音已在进行中，先停止之前的录音', 'warning');
+					uni.getRecorderManager().stop();
+					xiaozhiService.resetRecordingState();
+					this.isRecording = false;
+				}
+
+				// 记录开始触摸的Y坐标和时间戳
 				this.touchStartY = e.touches[0].clientY;
 				this.isCancelRecording = false;
+				this.recordStartTime = Date.now();
+				this.isValidRecording = false;
 				
 				this.addLog('正在启动录音...', 'info');
 
@@ -606,6 +625,10 @@
 				// 停止录音但不发送
 				if (xiaozhiService.isCurrentlyRecording()) {
 					uni.getRecorderManager().stop();
+					// 确保录音管理器状态重置
+					setTimeout(() => {
+						xiaozhiService.resetRecordingState();
+					}, 300);
 				}
 				
 				// 震动反馈
@@ -628,6 +651,30 @@
 				
 				// 停止可视化
 				this.stopAudioVisualization();
+				
+				// 检查录音是否满足最短录音时间要求
+				const recordDuration = Date.now() - this.recordStartTime;
+				if (recordDuration < this.minRecordDuration) {
+					// 录音时间太短，视为误触
+					this.addLog(`录音时间太短 (${recordDuration}ms)，不发送`, 'warning');
+					
+					// 显示提示
+					uni.showToast({
+						title: '说话时间太短',
+						icon: 'none',
+						duration: 1500
+					});
+					
+					// 仅停止录音，不发送
+					if (xiaozhiService.isCurrentlyRecording()) {
+						uni.getRecorderManager().stop();
+						xiaozhiService.resetRecordingState();
+					}
+					
+					// 震动反馈
+					uni.vibrateShort();
+					return;
+				}
 				
 				// 停止录音并发送
 				xiaozhiService.stopRecordingAndSend()

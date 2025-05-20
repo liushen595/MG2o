@@ -112,7 +112,7 @@ const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallb
                 console.log('服务器开始发送语音');
               } else if (message.state === 'sentence_start') {
                 console.log('服务器发送语音段:', message.text);
-                // 处理base64 MP3数据
+                // 处理 base64 MP3数据
                 if (message.tts_file) {
                   //             const audioData = atob(message.tts_file.data);
 
@@ -122,6 +122,7 @@ const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallb
                   //               uint8Array[i] = audioData.charCodeAt(i);
                   //             }
                   const arrayBuffer = uni.base64ToArrayBuffer(message.tts_file.data);
+                  console.log('收到语音数据，大小:', arrayBuffer.byteLength, '字节');
                   playMP3Data(arrayBuffer);
                 }
               } else if (message.state === 'sentence_end') {
@@ -317,18 +318,32 @@ const playNextInQueue = () => {
 
   // 使用微信小程序的音频API播放
   const innerAudioContext = uni.createInnerAudioContext();
-
   // 将ArrayBuffer转换为临时文件
-  const fs = uni.getFileSystemManager();
+  const fs = wx.getFileSystemManager();
   const tempFilePath = `${uni.env.USER_DATA_PATH}/temp_audio_${Date.now()}.mp3`;
-
+  console.log('创建临时文件路径:', tempFilePath);
   try {
-    fs.writeFileSync(tempFilePath, mp3Data);
+    // 使用异步写入方式替代同步写入，避免iOS平台兼容性问题
+    fs.writeFile({
+      filePath: tempFilePath,
+      data: mp3Data,
+      success: () => {
+        console.log('开始播放音频:', tempFilePath);
+        innerAudioContext.src = tempFilePath;
+        innerAudioContext.autoplay = true;
+        innerAudioContext.obeyMuteSwitch = false; // 不遵循静音开关
+      },
+      fail: (error) => {
+        console.error('写入音频文件失败:', error);
+        isPlaying = false;
+        // 播放下一个音频
+        playNextInQueue();
+      }
+    });
+    
+    // 注意：由于变成异步写入，下面的代码会被提前执行，所以移到success回调中
 
-    innerAudioContext.src = tempFilePath;
-    innerAudioContext.autoplay = true;
-
-    innerAudioCxt.onPlay(() => {
+    innerAudioContext.onPlay(() => {
       console.log('音频开始播放');
     });
 
@@ -605,6 +620,13 @@ const isCurrentlyRecording = () => {
   return isRecording;
 };
 
+/**
+ * 重置录音状态
+ */
+const resetRecordingState = () => {
+  isRecording = false;
+};
+
 export default {
   connectToServer,
   disconnectFromServer,
@@ -613,5 +635,6 @@ export default {
   initRecorder,
   startRecording,
   stopRecordingAndSend,
-  isCurrentlyRecording
+  isCurrentlyRecording,
+  resetRecordingState
 };
