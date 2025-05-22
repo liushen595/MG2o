@@ -15,11 +15,10 @@
 │   └── index/           # 主页
 │       └── index.vue    # 主页视图
 ├── static/              # 静态资源
-│   └── logo.png         # 项目logo
-├── utils/               # 工具类
-│   ├── location-service.js  # 位置服务
-│   └── xiaozhi-service.js   # 小智语音交互服务
-└── unpackage/           # 编译输出目录
+└── utils/               # 工具类
+    ├── location-service.js  # 位置服务
+    └── xiaozhi-service.js   # 小智语音交互服务
+
 ```
 
 ## 特点
