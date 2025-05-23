@@ -1,0 +1,22 @@
+{
+	"pages": [ 
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "苏博导"
+			}
+		},
+		{
+      		"path": "pages/index/new-page",
+      		"style": { "navigationBarTitleText": "分享页" }
+    	}
+
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "苏博导",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"uniIdRouter": {}
+}
