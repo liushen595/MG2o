@@ -462,12 +462,11 @@
 			// 发送录音文件到服务器
 			sendRecordFile(filePath) {
 				this.addLog('正在准备发送录音文件...', 'info');
-
 				this.startResponseTimeout(); // 开始响应超时计时器
 
 				// 显示加载动画
 				this.isLoading = true;
-
+	
 				// 使用xiaozhi-service的统一接口发送录音
 				xiaozhiService.sendAudioFile(filePath)
 					.then(() => {

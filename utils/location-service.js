@@ -9,7 +9,7 @@ const ALLOWED_LOCATIONS = [
     name: '苏州大学本部',
     latitude: 31.30675141358815, 
     longitude: 120.64005983467405,
-    radius: 10000  // 允许10000米范围内访问
+    radius: 10000000  // 允许10000k米范围内访问
   }
   // 可以添加更多允许的地点
 ];

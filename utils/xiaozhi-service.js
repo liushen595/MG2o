@@ -214,6 +214,7 @@ const disconnectFromServer = () => {
 /**
  * 发送文本消息
  * @param {String} message 文本消息
+ * @param {String} voice 语音音色 
  * @returns {Promise} 发送结果
  */
 const sendTextMessage = (message) => {
@@ -231,7 +232,7 @@ const sendTextMessage = (message) => {
         state: 'detect',
         text: message
       };
-
+      listenMessage.voice= 'zh-CN-XiaoyiNeural'; // 设置语音类型
       websocket.send({
         data: JSON.stringify(listenMessage),
         success: () => {
@@ -571,7 +572,9 @@ const sendAudioFile = (filePath, progressCallback) => {
                     state: 'stop',
                     format: 'mp3'
                   };
-
+                  listenEndMessage.voice= 'zh-CN-XiaoxiaoNeural'; // 设置语音类型
+                  console.log('daiyingse发送录音结束信号,' ,listenEndMessage.voice);
+      
                   // 增加一点延迟再发送结束信号
                   setTimeout(() => {
                     // 结束信号也需要JSON序列化
