@@ -1,6 +1,12 @@
 /**
  * 小智语音助手服务
  * 提供WebSocket连接、消息发送和TTS音频播放功能
+ * 
+ * 基于小智开源项目(MIT协议)修改
+ * 原项目版权所有者: 小智开源项目
+ * 修改部分版权所有者: 515, 2025
+ * 
+ * @license MIT
  */
 
 let websocket = null;
@@ -130,14 +136,14 @@ const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallb
               } else if (message.state === 'stop') {
                 console.log('服务器语音传输结束');
               }
-            }else if (message.type === 'stt') {
+            } else if (message.type === 'stt') {
               // 语音识别结果
               console.log('语音识别结果:', message.text);
               // 如果有语音识别回调，则调用它
               if (onSpeechRecognitionCallback && message.text) {
                 onSpeechRecognitionCallback(message.text);
               }
-            }else if (message.type === 'llm') {
+            } else if (message.type === 'llm') {
               // 大模型回复
               console.log('大模型回复:', message.text);
             }
@@ -214,6 +220,7 @@ const disconnectFromServer = () => {
 /**
  * 发送文本消息
  * @param {String} message 文本消息
+ * @param {String} voice 语音音色 
  * @returns {Promise} 发送结果
  */
 const sendTextMessage = (message) => {
@@ -231,7 +238,7 @@ const sendTextMessage = (message) => {
         state: 'detect',
         text: message
       };
-
+      listenMessage.voice = 'zh-CN-XiaoyiNeural'; // 设置语音类型
       websocket.send({
         data: JSON.stringify(listenMessage),
         success: () => {
@@ -340,7 +347,7 @@ const playNextInQueue = () => {
         playNextInQueue();
       }
     });
-    
+
     // 注意：由于变成异步写入，下面的代码会被提前执行，所以移到success回调中
 
     innerAudioContext.onPlay(() => {
@@ -571,6 +578,8 @@ const sendAudioFile = (filePath, progressCallback) => {
                     state: 'stop',
                     format: 'mp3'
                   };
+                  listenEndMessage.voice = 'zh-CN-XiaoxiaoNeural'; // 设置语音类型
+                  console.log('daiyingse发送录音结束信号,', listenEndMessage.voice);
 
                   // 增加一点延迟再发送结束信号
                   setTimeout(() => {

@@ -1,110 +1,110 @@
 <template>
 	<view class="container">
-		<view class="newPageHeader">
-  			<button class="nav-button" @click="navigateToNewPage">📤 分享</button>
-		</view>
-		<view class="header">
-			<text class="title">苏博导智能体</text>
-		</view>
-		<!--添加新页面-->
+		<<<<<<< HEAD <view class="newPageHeader">
+			<button class="nav-button" @click="navigateToNewPage">📤 分享</button>
+	</view>
+	<view class="header">
+		<text class="title">苏博导智能体</text>
+	</view>
+	<!--添加新页面-->
+	=======
+	<view class="header">
+		<text class="title">苏博导智能体</text>
+	</view>
+	>>>>>>> main
 
-		<!-- 位置验证部分 -->
-		<view v-if="!isLocationVerified" class="location-verification">
-			<view class="location-status"
-				:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
-				<text>{{ locationStatusText }}</text>
-			</view>
-			<view class="location-details" v-if="locationDetails">
-				<text>{{ locationDetails }}</text>
-			</view>
-			<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
+	<!-- 位置验证部分 -->
+	<view v-if="!isLocationVerified" class="location-verification">
+		<view class="location-status"
+			:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
+			<text>{{ locationStatusText }}</text>
 		</view>
+		<view class="location-details" v-if="locationDetails">
+			<text>{{ locationDetails }}</text>
+		</view>
+		<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
+	</view>
 
 
-		<!-- 服务器连接部分 -->
-		<view v-if="isLocationVerified" class="connection-section">
-			<view class="connection-header" @click="toggleConnectionPanel">
-				<view class="connection-title">
-					<text>连接服务</text>
-					<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText
-					}}</text>
-				</view>
-				<view class="toggle-arrow" :class="{ expanded: showConnectionPanel }">
-					<view class="triangle"></view>
-				</view>
+	<!-- 服务器连接部分 -->
+	<view v-if="isLocationVerified" class="connection-section">
+		<view class="connection-header" @click="toggleConnectionPanel">
+			<view class="connection-title">
+				<text>连接服务</text>
+				<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText
+				}}</text>
 			</view>
-			<view class="connection-form" v-if="showConnectionPanel">
-				<input class="server-input" v-model="serverUrl" placeholder="WebSocket服务器地址" />
-				<button class="connect-btn" :class="{ 'disconnect-btn': isConnected }" @click="toggleConnection">
-					{{ isConnected ? '断开' : '连接' }}
-				</button>
+			<view class="toggle-arrow" :class="{ expanded: showConnectionPanel }">
+				<view class="triangle"></view>
 			</view>
 		</view>
-
-		<!-- 消息记录部分 -->
-		<scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true"
-			:scroll-into-view="lastMessageId">
-			<view class="conversation-inner">
-				<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }"
-					:id="'msg-' + index">
-					<text>{{ msg.text }}</text>
-				</view>
-
-				<!-- 加载动画 -->
-				<view v-if="isLoading" class="loading-container">
-					<view class="loading-dots">
-						<view class="dot dot1"></view>
-						<view class="dot dot2"></view>
-						<view class="dot dot3"></view>
-					</view>
-				</view>
-			</view>
-		</scroll-view>
-
-		<!-- 消息输入部分 -->
-		<view class="message-input-container">
-			<view class="input-wrapper">
-				<input class="message-input" v-model="messageText" placeholder="输入消息..." :disabled="!isConnected"
-					@confirm="sendMessage" />
-				<button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageText.trim()">
-					<view class="send-icon"></view>
-				</button>
-			</view>			
-			<button class="record-btn"
-				@touchstart="startTouchRecording"
-				@touchmove="touchMoveRecording"
-				@touchend="endTouchRecording"
-				@touchcancel="cancelTouchRecording"
-				:disabled="!isConnected"
-				:class="{ recording: isRecording, 'cancel-recording': isCancelRecording }">
-				<view class="mic-icon"></view>
-				<text>{{ isRecording ? '松开发送' : '按住说话' }}</text>
+		<view class="connection-form" v-if="showConnectionPanel">
+			<input class="server-input" v-model="serverUrl" placeholder="WebSocket服务器地址" />
+			<button class="connect-btn" :class="{ 'disconnect-btn': isConnected }" @click="toggleConnection">
+				{{ isConnected ? '断开' : '连接' }}
 			</button>
 		</view>
-		<!-- 录音可视化显示 -->
-		<view v-if="isLocationVerified && isRecording" class="audio-visualizer">
-			<view class="visualizer-bar" v-for="(value, index) in audioVisualizerData" :key="index"
-				:style="{ height: value + '%' }"></view>
-				
-			<!-- 录音取消提示 -->
-			<view v-if="isCancelRecording" class="cancel-recording-tip">
-				<view class="cancel-icon"></view>
-				<text>松开手指，取消发送</text>
-			</view>
-		</view>
+	</view>
 
-		 <!-- 识别结果显示 -->
-		<view v-if="speechRecognitionText" class="speech-recognition-container">
-			<view class="speech-recognition-text">
-				<text>{{ speechRecognitionText }}</text>
-				<view class="recognition-icon">
-					<view class="mic-small-icon"></view>
+	<!-- 消息记录部分 -->
+	<scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true" :scroll-into-view="lastMessageId">
+		<view class="conversation-inner">
+			<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }"
+				:id="'msg-' + index">
+				<text>{{ msg.text }}</text>
+			</view>
+
+			<!-- 加载动画 -->
+			<view v-if="isLoading" class="loading-container">
+				<view class="loading-dots">
+					<view class="dot dot1"></view>
+					<view class="dot dot2"></view>
+					<view class="dot dot3"></view>
 				</view>
 			</view>
 		</view>
+	</scroll-view>
 
-		<!-- 日志部分 -->
-		<!-- 		<view class="log-container">
+	<!-- 消息输入部分 -->
+	<view class="message-input-container">
+		<view class="input-wrapper">
+			<input class="message-input" v-model="messageText" placeholder="输入消息..." :disabled="!isConnected"
+				@confirm="sendMessage" />
+			<button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageText.trim()">
+				<view class="send-icon"></view>
+			</button>
+		</view>
+		<button class="record-btn" @touchstart="startTouchRecording" @touchmove="touchMoveRecording"
+			@touchend="endTouchRecording" @touchcancel="cancelTouchRecording" :disabled="!isConnected"
+			:class="{ recording: isRecording, 'cancel-recording': isCancelRecording }">
+			<view class="mic-icon"></view>
+			<text>{{ isRecording ? '松开发送' : '按住说话' }}</text>
+		</button>
+	</view>
+	<!-- 录音可视化显示 -->
+	<view v-if="isLocationVerified && isRecording" class="audio-visualizer">
+		<view class="visualizer-bar" v-for="(value, index) in audioVisualizerData" :key="index"
+			:style="{ height: value + '%' }"></view>
+
+		<!-- 录音取消提示 -->
+		<view v-if="isCancelRecording" class="cancel-recording-tip">
+			<view class="cancel-icon"></view>
+			<text>松开手指，取消发送</text>
+		</view>
+	</view>
+
+	<!-- 识别结果显示 -->
+	<view v-if="speechRecognitionText" class="speech-recognition-container">
+		<view class="speech-recognition-text">
+			<text>{{ speechRecognitionText }}</text>
+			<view class="recognition-icon">
+				<view class="mic-small-icon"></view>
+			</view>
+		</view>
+	</view>
+
+	<!-- 日志部分 -->
+	<!-- 		<view class="log-container">
 			<text class="log-title">日志</text>
 			<scroll-view class="log-content" scroll-y="true" :scroll-top="logScrollTop">
 				<view v-for="(log, index) in logs" :key="index" class="log-entry" :class="log.type">
@@ -118,9 +118,8 @@
 <script>
 	import xiaozhiService from '../../utils/xiaozhi-service.js';
 	import locationService from '../../utils/location-service.js';
-	
+
 	export default {
-// eslint-disable-next-line no-dupe-keys	
 		data() {
 			return {
 				serverUrl: 'wss://huisuda.com/xiaozhi/v1/',
@@ -138,7 +137,7 @@
 				responseTimeoutId: null, // 响应超时计时器ID
 				responseTimeoutDuration: 10000, // 响应超时时间，默认10秒
 				lastMessageId: '', // 最后一条消息的ID
-				
+
 				// 语音识别相关
 				speechRecognitionText: '', // 语音识别结果文本
 				speechRecognitionTimer: null, // 语音识别结果显示定时器
@@ -148,10 +147,10 @@
 				isCheckingLocation: false,
 				locationError: false,
 				locationStatusText: '请验证您的位置',
-				locationDetails: '此应用只能在特定地点使用',				locationBtnText: '验证位置',
+				locationDetails: '此应用只能在特定地点使用', locationBtnText: '验证位置',
 				currentLocation: null,
 				locationCheckInterval: null,
-				
+
 				// 触摸录音相关
 				touchStartY: 0, // 记录触摸开始的Y坐标
 				isCancelRecording: false, // 是否处于取消录音状态
@@ -161,7 +160,7 @@
 				isValidRecording: false, // 是否为有效录音
 
 				//追问
-				isInquiry:false
+				isInquiry: false
 			}
 		},
 		onLoad() {
@@ -203,13 +202,13 @@
 			this.stopLocationCheck();
 		},
 		methods: {
-			    navigateToNewPage() {
-      			uni.navigateTo({
-        		url: '/pages/index/new-page',
-        		success: () => console.log('跳转成功'),
-        		fail: (err) => console.error('跳转失败', err)
-      			});
-    				},
+			navigateToNewPage() {
+				uni.navigateTo({
+					url: '/pages/index/new-page',
+					success: () => console.log('跳转成功'),
+					fail: (err) => console.error('跳转失败', err)
+				});
+			},
 			// 切换连接状态
 			toggleConnection() {
 				if (this.isConnected) {
@@ -313,8 +312,8 @@
 					// 隐藏加载动画
 					this.isLoading = false;
 				} else if (message.type === 'tts') {
-					if(true){
-							// TTS状态消息
+					if (true) {
+						// TTS状态消息
 						if (message.state === 'start') {
 							this.addLog('服务器开始发送语音', 'info');
 						} else if (message.state === 'sentence_start') {
@@ -332,7 +331,7 @@
 							this.isLoading = false;
 						}
 					}
-					
+
 				} else if (message.type === 'stt') {
 					// 语音识别结果
 					this.addLog(`识别结果: ${message.text}`, 'info');
@@ -356,20 +355,20 @@
 			// 处理语音识别结果
 			handleSpeechRecognition(text) {
 				if (!text) return;
-				
+
 				this.addLog(`收到语音识别结果: ${text}`, 'info');
-				
+
 				// 显示语音识别结果
 				this.speechRecognitionText = text;
-				
+
 				// 同时添加到消息列表，作为用户消息显示在右侧
 				this.addMessage(text, true);
-				
+
 				// 设置定时器，一段时间后清除语音识别结果显示
 				if (this.speechRecognitionTimer) {
 					clearTimeout(this.speechRecognitionTimer);
 				}
-				
+
 				this.speechRecognitionTimer = setTimeout(() => {
 					this.speechRecognitionText = '';
 				}, 5000); // 5秒后清除显示
@@ -480,6 +479,7 @@
 				// 显示加载动画
 				this.isLoading = true;
 
+
 				// 使用xiaozhi-service的统一接口发送录音
 				xiaozhiService.sendAudioFile(filePath)
 					.then(() => {
@@ -540,7 +540,7 @@
 				this.isCancelRecording = false;
 				this.recordStartTime = Date.now();
 				this.isValidRecording = false;
-				
+
 				this.addLog('正在启动录音...', 'info');
 
 				// 配置录音参数
@@ -566,7 +566,7 @@
 							this.stopRecording();
 						}
 					}, 60000);
-					
+
 					// 震动反馈
 					uni.vibrateShort({
 						success: () => {
@@ -575,17 +575,17 @@
 					});
 				}
 			},
-			
+
 			// 触摸移动（检测是否上滑取消）
 			touchMoveRecording(e) {
 				if (!this.isRecording) return;
-				
+
 				const currentY = e.touches[0].clientY;
 				const moveDistance = this.touchStartY - currentY;
-				
+
 				// rpx 转 px 的近似转换
 				const cancelDistancePx = this.cancelDistance * (uni.getSystemInfoSync().windowWidth / 750);
-				
+
 				// 判断是否满足取消条件（上滑超过指定距离）
 				if (moveDistance > cancelDistancePx) {
 					if (!this.isCancelRecording) {
@@ -597,11 +597,11 @@
 					this.isCancelRecording = false;
 				}
 			},
-			
+
 			// 触摸结束录音（松开）
 			endTouchRecording() {
 				if (!this.isRecording) return;
-				
+
 				// 判断是否取消录音
 				if (this.isCancelRecording) {
 					this.cancelRecording();
@@ -609,31 +609,31 @@
 					this.finishRecording();
 				}
 			},
-			
+
 			// 取消触摸录音（触摸被取消，如来电等）
 			cancelTouchRecording() {
 				if (this.isRecording) {
 					this.cancelRecording();
 				}
 			},
-			
+
 			// 取消录音
 			cancelRecording() {
 				this.addLog('取消录音', 'info');
-				
+
 				// 重置录音状态
 				this.isRecording = false;
 				this.isCancelRecording = false;
-				
+
 				// 清除录音超时
 				if (this.recordingTimeout) {
 					clearTimeout(this.recordingTimeout);
 					this.recordingTimeout = null;
 				}
-				
+
 				// 停止可视化
 				this.stopAudioVisualization();
-				
+
 				// 停止录音但不发送
 				if (xiaozhiService.isCurrentlyRecording()) {
 					uni.getRecorderManager().stop();
@@ -642,58 +642,58 @@
 						xiaozhiService.resetRecordingState();
 					}, 300);
 				}
-				
+
 				// 震动反馈
 				uni.vibrateShort();
 			},
-			
+
 			// 完成录音并发送
 			finishRecording() {
 				this.addLog('正在停止录音...', 'info');
-				
+
 				// 重置录音状态
 				this.isRecording = false;
 				this.isCancelRecording = false;
-				
+
 				// 清除录音超时
 				if (this.recordingTimeout) {
 					clearTimeout(this.recordingTimeout);
 					this.recordingTimeout = null;
 				}
-				
+
 				// 停止可视化
 				this.stopAudioVisualization();
-				
+
 				// 检查录音是否满足最短录音时间要求
 				const recordDuration = Date.now() - this.recordStartTime;
 				if (recordDuration < this.minRecordDuration) {
 					// 录音时间太短，视为误触
 					this.addLog(`录音时间太短 (${recordDuration}ms)，不发送`, 'warning');
-					
+
 					// 显示提示
 					uni.showToast({
 						title: '说话时间太短',
 						icon: 'none',
 						duration: 1500
 					});
-					
+
 					// 仅停止录音，不发送
 					if (xiaozhiService.isCurrentlyRecording()) {
 						uni.getRecorderManager().stop();
 						xiaozhiService.resetRecordingState();
 					}
-					
+
 					// 震动反馈
 					uni.vibrateShort();
 					return;
 				}
-				
+
 				// 停止录音并发送
 				xiaozhiService.stopRecordingAndSend()
 					.catch(error => {
 						this.addLog(`录音停止错误: ${error}`, 'error');
 					});
-				
+
 				// 震动反馈
 				uni.vibrateShort();
 			},
@@ -847,34 +847,37 @@
 </script>
 
 <style>
-/* 添加按钮样式 */
+
+	/* 添加按钮样式 */
 	.newPageHeader {
-  	position: relative;
-  	padding: 15rpx 0;
-		}
+		position: relative;
+		padding: 15rpx 0;
+	}
 
 	.nav-button {
-	position: absolute;
-	left: 20rpx;
-	top: 50%;
-	transform: translateY(-50%);
-	padding: 8rpx 20rpx;
-	background: rgba(255, 255, 255, 0.9);
-	border: 1rpx solid #eaeaea;
-	border-radius: 30rpx;
-	font-size: 24rpx;
-	color: #333;
-	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
-	z-index: 1;
-	display: flex;
-	align-items: center;
-	gap: 8rpx;
+		position: absolute;
+		left: 20rpx;
+		top: 50%;
+		transform: translateY(-50%);
+		padding: 8rpx 20rpx;
+		background: rgba(255, 255, 255, 0.9);
+		border: 1rpx solid #eaeaea;
+		border-radius: 30rpx;
+		font-size: 24rpx;
+		color: #333;
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
 	}
 
 	.nav-button::after {
-	content: '';
-	border: none; /* 去除uniapp按钮默认边框 */
+		content: '';
+		border: none;
+		/* 去除uniapp按钮默认边框 */
 	}
+
 	.container {
 		padding: 20rpx;
 		background-color: #f8f9fa;
@@ -1274,11 +1277,12 @@
 		background-color: #d9d9d9;
 		opacity: 0.5;
 	}
+
 	.record-btn.recording {
 		background-color: #ff4d4f;
 		animation: pulse 1.5s infinite;
 	}
-	
+
 	.record-btn.cancel-recording {
 		background-color: #ff7875;
 	}
@@ -1299,14 +1303,15 @@
 		animation: fadeIn 0.2s ease;
 		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
 	}
-	
+
 	.cancel-icon {
 		width: 28rpx;
 		height: 28rpx;
 		position: relative;
 	}
-	
-	.cancel-icon:before, .cancel-icon:after {
+
+	.cancel-icon:before,
+	.cancel-icon:after {
 		content: '';
 		position: absolute;
 		width: 100%;
@@ -1315,11 +1320,11 @@
 		top: 50%;
 		left: 0;
 	}
-	
+
 	.cancel-icon:before {
 		transform: translateY(-50%) rotate(45deg);
 	}
-	
+
 	.cancel-icon:after {
 		transform: translateY(-50%) rotate(-45deg);
 	}

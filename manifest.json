@@ -5,7 +5,7 @@
     "versionName": "1.0.0",
     "versionCode": "100",
     "transformPx": false,
-
+    /* 5+App特有相关 */
     "app-plus": {
         "usingComponents": true,
         "nvueStyleCompiler": "uni-app",
@@ -16,15 +16,13 @@
             "autoclose": true,
             "delay": 0
         },
-
+        /* 模块配置 */
         "modules": {
             "Geolocation": {}
         },
-                    "h5": {
-    "router": { "mode": "hash" }
-    },
+        /* 应用发布信息 */
         "distribute": {
-
+            /* android打包配置 */
             "android": {
                 "permissions": [
                     "<uses-permission android:name=\"android.permission.CHANGE_NETWORK_STATE\"/>",
@@ -47,28 +45,31 @@
                     "<uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\"/>"
                 ]
             },
-
+            /* ios打包配置 */
             "ios": {
                 "privacyDescription": {
                     "NSLocationWhenInUseUsageDescription": "此应用需要获取您的位置权限，用于定位服务",
                     "NSLocationAlwaysAndWhenInUseUsageDescription": "此应用需要获取您的位置权限，用于定位服务"
                 }
             },
-
+            /* SDK配置 */
             "sdkConfigs": {
                 "geolocation": {
                     "system": {
-                        "__platform__": ["ios", "android"]
+                        "__platform__": [
+                            "ios",
+                            "android"
+                        ]
                     }
                 }
             }
         }
     },
-
+    /* 快应用特有相关 */
     "quickapp": {},
-
+    /* 小程序特有相关 */
     "mp-weixin": {
-        "appid": "wx7fe6290ead45c9a0",
+        "appid": "",
         "setting": {
             "urlCheck": false
         },
@@ -76,10 +77,10 @@
         "lazyCodeLoading": "requiredComponents",
         "permission": {
             "scope.userFuzzyLocation": {
-            "desc": "您的位置信息将用于验证是否在允许的区域内使用"
+                "desc": "您的位置信息将用于验证是否在允许的区域内使用"
             },
             "scope.record": {
-            "desc": "您的录音权限将用于语音输入功能"
+                "desc": "您的录音权限将用于语音输入功能"
             }
         },
         "requiredPrivateInfos": [
