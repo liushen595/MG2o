@@ -1,110 +1,105 @@
 <template>
 	<view class="container">
-		<<<<<<< HEAD <view class="newPageHeader">
+		<view class="newPageHeader">
 			<button class="nav-button" @click="navigateToNewPage">📤 分享</button>
-	</view>
-	<view class="header">
-		<text class="title">苏博导智能体</text>
-	</view>
-	<!--添加新页面-->
-	=======
-	<view class="header">
-		<text class="title">苏博导智能体</text>
-	</view>
-	>>>>>>> main
-
-	<!-- 位置验证部分 -->
-	<view v-if="!isLocationVerified" class="location-verification">
-		<view class="location-status"
-			:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
-			<text>{{ locationStatusText }}</text>
 		</view>
-		<view class="location-details" v-if="locationDetails">
-			<text>{{ locationDetails }}</text>
+		<view class="header">
+			<text class="title">苏博导智能体</text>
 		</view>
-		<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
-	</view>
 
-
-	<!-- 服务器连接部分 -->
-	<view v-if="isLocationVerified" class="connection-section">
-		<view class="connection-header" @click="toggleConnectionPanel">
-			<view class="connection-title">
-				<text>连接服务</text>
-				<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText
-				}}</text>
+		<!-- 位置验证部分 -->
+		<view v-if="!isLocationVerified" class="location-verification">
+			<view class="location-status"
+				:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
+				<text>{{ locationStatusText }}</text>
 			</view>
-			<view class="toggle-arrow" :class="{ expanded: showConnectionPanel }">
-				<view class="triangle"></view>
+			<view class="location-details" v-if="locationDetails">
+				<text>{{ locationDetails }}</text>
+			</view>
+			<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
+		</view>
+
+
+		<!-- 服务器连接部分 -->
+		<view v-if="isLocationVerified" class="connection-section">
+			<view class="connection-header" @click="toggleConnectionPanel">
+				<view class="connection-title">
+					<text>连接服务</text>
+					<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText
+					}}</text>
+				</view>
+				<view class="toggle-arrow" :class="{ expanded: showConnectionPanel }">
+					<view class="triangle"></view>
+				</view>
+			</view>
+			<view class="connection-form" v-if="showConnectionPanel">
+				<input class="server-input" v-model="serverUrl" placeholder="WebSocket服务器地址" />
+				<button class="connect-btn" :class="{ 'disconnect-btn': isConnected }" @click="toggleConnection">
+					{{ isConnected ? '断开' : '连接' }}
+				</button>
 			</view>
 		</view>
-		<view class="connection-form" v-if="showConnectionPanel">
-			<input class="server-input" v-model="serverUrl" placeholder="WebSocket服务器地址" />
-			<button class="connect-btn" :class="{ 'disconnect-btn': isConnected }" @click="toggleConnection">
-				{{ isConnected ? '断开' : '连接' }}
+
+		<!-- 消息记录部分 -->
+		<scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true"
+			:scroll-into-view="lastMessageId">
+			<view class="conversation-inner">
+				<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }"
+					:id="'msg-' + index">
+					<text>{{ msg.text }}</text>
+				</view>
+
+				<!-- 加载动画 -->
+				<view v-if="isLoading" class="loading-container">
+					<view class="loading-dots">
+						<view class="dot dot1"></view>
+						<view class="dot dot2"></view>
+						<view class="dot dot3"></view>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+
+		<!-- 消息输入部分 -->
+		<view class="message-input-container">
+			<view class="input-wrapper">
+				<input class="message-input" v-model="messageText" placeholder="输入消息..." :disabled="!isConnected"
+					@confirm="sendMessage" />
+				<button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageText.trim()">
+					<view class="send-icon"></view>
+				</button>
+			</view>
+			<button class="record-btn" @touchstart="startTouchRecording" @touchmove="touchMoveRecording"
+				@touchend="endTouchRecording" @touchcancel="cancelTouchRecording" :disabled="!isConnected"
+				:class="{ recording: isRecording, 'cancel-recording': isCancelRecording }">
+				<view class="mic-icon"></view>
+				<text>{{ isRecording ? '松开发送' : '按住说话' }}</text>
 			</button>
 		</view>
-	</view>
+		<!-- 录音可视化显示 -->
+		<view v-if="isLocationVerified && isRecording" class="audio-visualizer">
+			<view class="visualizer-bar" v-for="(value, index) in audioVisualizerData" :key="index"
+				:style="{ height: value + '%' }"></view>
 
-	<!-- 消息记录部分 -->
-	<scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true" :scroll-into-view="lastMessageId">
-		<view class="conversation-inner">
-			<view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }"
-				:id="'msg-' + index">
-				<text>{{ msg.text }}</text>
+			<!-- 录音取消提示 -->
+			<view v-if="isCancelRecording" class="cancel-recording-tip">
+				<view class="cancel-icon"></view>
+				<text>松开手指，取消发送</text>
 			</view>
+		</view>
 
-			<!-- 加载动画 -->
-			<view v-if="isLoading" class="loading-container">
-				<view class="loading-dots">
-					<view class="dot dot1"></view>
-					<view class="dot dot2"></view>
-					<view class="dot dot3"></view>
+		<!-- 识别结果显示 -->
+		<view v-if="speechRecognitionText" class="speech-recognition-container">
+			<view class="speech-recognition-text">
+				<text>{{ speechRecognitionText }}</text>
+				<view class="recognition-icon">
+					<view class="mic-small-icon"></view>
 				</view>
 			</view>
 		</view>
-	</scroll-view>
 
-	<!-- 消息输入部分 -->
-	<view class="message-input-container">
-		<view class="input-wrapper">
-			<input class="message-input" v-model="messageText" placeholder="输入消息..." :disabled="!isConnected"
-				@confirm="sendMessage" />
-			<button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageText.trim()">
-				<view class="send-icon"></view>
-			</button>
-		</view>
-		<button class="record-btn" @touchstart="startTouchRecording" @touchmove="touchMoveRecording"
-			@touchend="endTouchRecording" @touchcancel="cancelTouchRecording" :disabled="!isConnected"
-			:class="{ recording: isRecording, 'cancel-recording': isCancelRecording }">
-			<view class="mic-icon"></view>
-			<text>{{ isRecording ? '松开发送' : '按住说话' }}</text>
-		</button>
-	</view>
-	<!-- 录音可视化显示 -->
-	<view v-if="isLocationVerified && isRecording" class="audio-visualizer">
-		<view class="visualizer-bar" v-for="(value, index) in audioVisualizerData" :key="index"
-			:style="{ height: value + '%' }"></view>
-
-		<!-- 录音取消提示 -->
-		<view v-if="isCancelRecording" class="cancel-recording-tip">
-			<view class="cancel-icon"></view>
-			<text>松开手指，取消发送</text>
-		</view>
-	</view>
-
-	<!-- 识别结果显示 -->
-	<view v-if="speechRecognitionText" class="speech-recognition-container">
-		<view class="speech-recognition-text">
-			<text>{{ speechRecognitionText }}</text>
-			<view class="recognition-icon">
-				<view class="mic-small-icon"></view>
-			</view>
-		</view>
-	</view>
-
-	<!-- 日志部分 -->
-	<!-- 		<view class="log-container">
+		<!-- 日志部分 -->
+		<!-- 		<view class="log-container">
 			<text class="log-title">日志</text>
 			<scroll-view class="log-content" scroll-y="true" :scroll-top="logScrollTop">
 				<view v-for="(log, index) in logs" :key="index" class="log-entry" :class="log.type">
