@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <text>收藏并扫描此二维码,可再次进入本程序</text>
-    <image class="qrcode" src="../index/二维码.jpg"></image>
+    <image class="qrcode" src="../index/二维码.jpg" show-menu-by-longpress></image>
     <button @click="goBack">返回</button>
   </view>
 </template>

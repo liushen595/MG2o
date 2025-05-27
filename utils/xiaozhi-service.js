@@ -487,9 +487,10 @@ const startRecording = (options = {}) => {
 /**
  * 停止录音并发送到服务器
  * @param {Function} progressCallback 上传进度回调
+ * @param {Number} voiceId 音色ID
  * @returns {Promise} 上传结果
  */
-const stopRecordingAndSend = (progressCallback) => {
+const stopRecordingAndSend = (progressCallback,voiceId) => {
   return new Promise((resolve, reject) => {
     if (!recorderManager || !isRecording) {
       reject('没有正在进行的录音');
@@ -549,13 +550,13 @@ const sendAudioFile = (filePath, progressCallback,voiceId=1) => {
     console.log('准备发送音频文件:', filePath);
       //新增加音色处理
       const voiceMap = {
-      1: 'zh-CN-XiaoyiNeural',    // 温柔女声
-      2: 'zh-CN-YunxiNeural',     // 专业男声
-      3: 'zh-CN-XiaoxiaoNeural',  // 可爱童声
-      4: 'zh-HK-HiuGaaiNeural'  // 吴语方言（苏州话）
+        1: 'zh-CN-XiaoyiNeural',    // 温柔女声
+        2: 'zh-CN-YunxiNeural',     // 专业男声
+        3: 'zh-CN-XiaoxiaoNeural',  // 可爱童声
+        4: 'zh-HK-HiuGaaiNeural'  
      
       };
-      currentVoice = voiceMap[voiceId] || 'zh-CN-XiaoyiNeural';
+      currentVoice = voiceMap[voiceId];
       console.log('当前音色设置为:', currentVoice);
       try {
         // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
@@ -564,7 +565,7 @@ const sendAudioFile = (filePath, progressCallback,voiceId=1) => {
           mode: 'manual',
           state: 'start',
           format: 'mp3',
-           voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural' // 动态设置
+          voice: voiceMap[voiceId] 
         };
       // 使用JSON.stringify()序列化消息
       const startData = JSON.stringify(listenStartMessage);
@@ -595,7 +596,7 @@ const sendAudioFile = (filePath, progressCallback,voiceId=1) => {
                     mode: 'manual',
                     state: 'stop',
                     format: 'mp3',
-                    voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural'//使用当前选择的音色而不是写定的音色
+                    voice: voiceMap[voiceId]//使用当前选择的音色而不是写定的音色
                   };
                   //listenEndMessage.voice = 'zh-CN-XiaoxiaoNeural'; // 设置语音类型
                   console.log('daiyingse发送录音结束信号,', listenEndMessage.voice);
