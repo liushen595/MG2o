@@ -1,6 +1,12 @@
 /**
  * 小智语音助手服务
  * 提供WebSocket连接、消息发送和TTS音频播放功能
+ * 
+ * 基于小智开源项目(MIT协议)修改
+ * 原项目版权所有者: 小智开源项目
+ * 修改部分版权所有者: 515, 2025
+ * 
+ * @license MIT
  */
 
 let websocket = null;
@@ -12,6 +18,9 @@ let audioContext = null;
 let audioQueue = [];
 let isPlaying = false;
 
+// 添加语音识别结果回调
+let onSpeechRecognitionCallback = null;
+
 /**
  * 连接到小智服务器
  * @param {String} url WebSocket服务器地址
@@ -19,11 +28,17 @@ let isPlaying = false;
  * @param {Function} onMessageCallback 消息接收回调
  * @param {Function} onCloseCallback 连接关闭回调
  * @param {Function} onErrorCallback 错误回调
+ * @param {Function} onSpeechRecognition 语音识别结果回调
  * @returns {Promise} 连接结果
  */
-const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallback, onErrorCallback) => {
+// 默认音色
+let currentVoice = 'zh-CN-XiaoyiNeural'; 
+// 新增设置音色的方法
+const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallback, onErrorCallback, onSpeechRecognition) => {
   return new Promise((resolve, reject) => {
     try {
+      // 保存语音识别回调函数
+      onSpeechRecognitionCallback = onSpeechRecognition
       // 检查URL格式
       if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
         const error = 'URL格式错误，必须以ws://或wss://开头';
@@ -105,7 +120,7 @@ const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallb
                 console.log('服务器开始发送语音');
               } else if (message.state === 'sentence_start') {
                 console.log('服务器发送语音段:', message.text);
-                // 处理base64 MP3数据
+                // 处理 base64 MP3数据
                 if (message.tts_file) {
                   //             const audioData = atob(message.tts_file.data);
 
@@ -115,12 +130,20 @@ const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallb
                   //               uint8Array[i] = audioData.charCodeAt(i);
                   //             }
                   const arrayBuffer = uni.base64ToArrayBuffer(message.tts_file.data);
+                  console.log('收到语音数据，大小:', arrayBuffer.byteLength, '字节');
                   playMP3Data(arrayBuffer);
                 }
               } else if (message.state === 'sentence_end') {
                 console.log('语音段结束:', message.text);
               } else if (message.state === 'stop') {
                 console.log('服务器语音传输结束');
+              }
+            } else if (message.type === 'stt') {
+              // 语音识别结果
+              console.log('语音识别结果:', message.text);
+              // 如果有语音识别回调，则调用它
+              if (onSpeechRecognitionCallback && message.text) {
+                onSpeechRecognitionCallback(message.text);
               }
             } else if (message.type === 'llm') {
               // 大模型回复
@@ -199,24 +222,32 @@ const disconnectFromServer = () => {
 /**
  * 发送文本消息
  * @param {String} message 文本消息
+ * @param {String} voice 语音音色 
  * @returns {Promise} 发送结果
  */
-const sendTextMessage = (message) => {
+const sendTextMessage = (message,voiceId=1) => {
   return new Promise((resolve, reject) => {
     if (!message || !websocket || !isConnected) {
       reject('WebSocket未连接或消息为空');
       return;
     }
 
+    const voiceMap = {
+      1: 'zh-CN-XiaoyiNeural',
+      2: 'zh-CN-YunxiNeural',
+      3: 'zh-CN-XiaoxiaoNeural',
+      4: 'zh-HK-HiuGaaiNeural'
+    };
     try {
       // 直接发送listen消息
       const listenMessage = {
         type: 'listen',
         mode: 'manual',
         state: 'detect',
-        text: message
+        text: message,
+        voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural' // 使用当前选择的音色
       };
-
+      //listenMessage.voice = 'zh-CN-XiaoyiNeural'//这一步不再被需要
       websocket.send({
         data: JSON.stringify(listenMessage),
         success: () => {
@@ -303,16 +334,30 @@ const playNextInQueue = () => {
 
   // 使用微信小程序的音频API播放
   const innerAudioContext = uni.createInnerAudioContext();
-
   // 将ArrayBuffer转换为临时文件
-  const fs = uni.getFileSystemManager();
+  const fs = wx.getFileSystemManager();
   const tempFilePath = `${uni.env.USER_DATA_PATH}/temp_audio_${Date.now()}.mp3`;
-
+  console.log('创建临时文件路径:', tempFilePath);
   try {
-    fs.writeFileSync(tempFilePath, mp3Data);
+    // 使用异步写入方式替代同步写入，避免iOS平台兼容性问题
+    fs.writeFile({
+      filePath: tempFilePath,
+      data: mp3Data,
+      success: () => {
+        console.log('开始播放音频:', tempFilePath);
+        innerAudioContext.src = tempFilePath;
+        innerAudioContext.autoplay = true;
+        innerAudioContext.obeyMuteSwitch = false; // 不遵循静音开关
+      },
+      fail: (error) => {
+        console.error('写入音频文件失败:', error);
+        isPlaying = false;
+        // 播放下一个音频
+        playNextInQueue();
+      }
+    });
 
-    innerAudioContext.src = tempFilePath;
-    innerAudioContext.autoplay = true;
+    // 注意：由于变成异步写入，下面的代码会被提前执行，所以移到success回调中
 
     innerAudioContext.onPlay(() => {
       console.log('音频开始播放');
@@ -469,7 +514,7 @@ const stopRecordingAndSend = (progressCallback) => {
         // 确保获得文件后立即发送，避免被下一个录音覆盖
         const currentFilePath = recordFilePath;
 
-        sendAudioFile(currentFilePath, progressCallback)
+        sendAudioFile(currentFilePath, progressCallback,voiceId)
           .then(resolve)
           .catch(reject);
       } else {
@@ -494,7 +539,7 @@ const stopRecordingAndSend = (progressCallback) => {
  * @param {Function} progressCallback 上传进度回调
  * @returns {Promise} 上传结果
  */
-const sendAudioFile = (filePath, progressCallback) => {
+const sendAudioFile = (filePath, progressCallback,voiceId=1) => {
   return new Promise((resolve, reject) => {
     if (!websocket || !isConnected) {
       reject('WebSocket未连接');
@@ -502,16 +547,25 @@ const sendAudioFile = (filePath, progressCallback) => {
     }
 
     console.log('准备发送音频文件:', filePath);
-
-    try {
-      // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
-      const listenStartMessage = {
-        type: 'listen',
-        mode: 'manual',
-        state: 'start',
-        format: 'mp3'
+      //新增加音色处理
+      const voiceMap = {
+      1: 'zh-CN-XiaoyiNeural',    // 温柔女声
+      2: 'zh-CN-YunxiNeural',     // 专业男声
+      3: 'zh-CN-XiaoxiaoNeural',  // 可爱童声
+      4: 'zh-HK-HiuGaaiNeural'  // 吴语方言（苏州话）
+     
       };
-
+      currentVoice = voiceMap[voiceId] || 'zh-CN-XiaoyiNeural';
+      console.log('当前音色设置为:', currentVoice);
+      try {
+        // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
+        const listenStartMessage = {
+          type: 'listen',
+          mode: 'manual',
+          state: 'start',
+          format: 'mp3',
+           voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural' // 动态设置
+        };
       // 使用JSON.stringify()序列化消息
       const startData = JSON.stringify(listenStartMessage);
 
@@ -540,8 +594,11 @@ const sendAudioFile = (filePath, progressCallback) => {
                     type: 'listen',
                     mode: 'manual',
                     state: 'stop',
-                    format: 'mp3'
+                    format: 'mp3',
+                    voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural'//使用当前选择的音色而不是写定的音色
                   };
+                  //listenEndMessage.voice = 'zh-CN-XiaoxiaoNeural'; // 设置语音类型
+                  console.log('daiyingse发送录音结束信号,', listenEndMessage.voice);
 
                   // 增加一点延迟再发送结束信号
                   setTimeout(() => {
@@ -557,7 +614,7 @@ const sendAudioFile = (filePath, progressCallback) => {
                         reject(err);
                       }
                     });
-                  }, 300); // 300ms延迟，确保服务器有时间处理音频数据
+                  }, 3000); // 3000ms延迟，确保服务器有时间处理音频数据
                 },
                 fail: (err) => {
                   console.error('发送音频数据失败:', err);
@@ -591,6 +648,13 @@ const isCurrentlyRecording = () => {
   return isRecording;
 };
 
+/**
+ * 重置录音状态
+ */
+const resetRecordingState = () => {
+  isRecording = false;
+};
+
 export default {
   connectToServer,
   disconnectFromServer,
@@ -599,5 +663,6 @@ export default {
   initRecorder,
   startRecording,
   stopRecordingAndSend,
-  isCurrentlyRecording
+  isCurrentlyRecording,
+  resetRecordingState,
 };
