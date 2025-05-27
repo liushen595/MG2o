@@ -31,12 +31,14 @@ let onSpeechRecognitionCallback = null;
  * @param {Function} onSpeechRecognition 语音识别结果回调
  * @returns {Promise} 连接结果
  */
+// 默认音色
+let currentVoice = 'zh-CN-XiaoyiNeural'; 
+// 新增设置音色的方法
 const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallback, onErrorCallback, onSpeechRecognition) => {
   return new Promise((resolve, reject) => {
     try {
       // 保存语音识别回调函数
-      onSpeechRecognitionCallback = onSpeechRecognition;
-
+      onSpeechRecognitionCallback = onSpeechRecognition
       // 检查URL格式
       if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
         const error = 'URL格式错误，必须以ws://或wss://开头';
@@ -223,22 +225,29 @@ const disconnectFromServer = () => {
  * @param {String} voice 语音音色 
  * @returns {Promise} 发送结果
  */
-const sendTextMessage = (message) => {
+const sendTextMessage = (message,voiceId=1) => {
   return new Promise((resolve, reject) => {
     if (!message || !websocket || !isConnected) {
       reject('WebSocket未连接或消息为空');
       return;
     }
 
+    const voiceMap = {
+      1: 'zh-CN-XiaoyiNeural',
+      2: 'zh-CN-YunxiNeural',
+      3: 'zh-CN-XiaoxiaoNeural',
+      4: 'zh-HK-HiuGaaiNeural'
+    };
     try {
       // 直接发送listen消息
       const listenMessage = {
         type: 'listen',
         mode: 'manual',
         state: 'detect',
-        text: message
+        text: message,
+        voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural' // 使用当前选择的音色
       };
-      listenMessage.voice = 'zh-CN-XiaoyiNeural'; // 设置语音类型
+      //listenMessage.voice = 'zh-CN-XiaoyiNeural'//这一步不再被需要
       websocket.send({
         data: JSON.stringify(listenMessage),
         success: () => {
@@ -505,7 +514,7 @@ const stopRecordingAndSend = (progressCallback) => {
         // 确保获得文件后立即发送，避免被下一个录音覆盖
         const currentFilePath = recordFilePath;
 
-        sendAudioFile(currentFilePath, progressCallback)
+        sendAudioFile(currentFilePath, progressCallback,voiceId)
           .then(resolve)
           .catch(reject);
       } else {
@@ -530,7 +539,7 @@ const stopRecordingAndSend = (progressCallback) => {
  * @param {Function} progressCallback 上传进度回调
  * @returns {Promise} 上传结果
  */
-const sendAudioFile = (filePath, progressCallback) => {
+const sendAudioFile = (filePath, progressCallback,voiceId=1) => {
   return new Promise((resolve, reject) => {
     if (!websocket || !isConnected) {
       reject('WebSocket未连接');
@@ -538,16 +547,25 @@ const sendAudioFile = (filePath, progressCallback) => {
     }
 
     console.log('准备发送音频文件:', filePath);
-
-    try {
-      // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
-      const listenStartMessage = {
-        type: 'listen',
-        mode: 'manual',
-        state: 'start',
-        format: 'mp3'
+      //新增加音色处理
+      const voiceMap = {
+      1: 'zh-CN-XiaoyiNeural',    // 温柔女声
+      2: 'zh-CN-YunxiNeural',     // 专业男声
+      3: 'zh-CN-XiaoxiaoNeural',  // 可爱童声
+      4: 'zh-HK-HiuGaaiNeural'  // 吴语方言（苏州话）
+     
       };
-
+      currentVoice = voiceMap[voiceId] || 'zh-CN-XiaoyiNeural';
+      console.log('当前音色设置为:', currentVoice);
+      try {
+        // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
+        const listenStartMessage = {
+          type: 'listen',
+          mode: 'manual',
+          state: 'start',
+          format: 'mp3',
+           voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural' // 动态设置
+        };
       // 使用JSON.stringify()序列化消息
       const startData = JSON.stringify(listenStartMessage);
 
@@ -576,9 +594,10 @@ const sendAudioFile = (filePath, progressCallback) => {
                     type: 'listen',
                     mode: 'manual',
                     state: 'stop',
-                    format: 'mp3'
+                    format: 'mp3',
+                    voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural'//使用当前选择的音色而不是写定的音色
                   };
-                  listenEndMessage.voice = 'zh-CN-XiaoxiaoNeural'; // 设置语音类型
+                  //listenEndMessage.voice = 'zh-CN-XiaoxiaoNeural'; // 设置语音类型
                   console.log('daiyingse发送录音结束信号,', listenEndMessage.voice);
 
                   // 增加一点延迟再发送结束信号
@@ -645,5 +664,5 @@ export default {
   startRecording,
   stopRecordingAndSend,
   isCurrentlyRecording,
-  resetRecordingState
+  resetRecordingState,
 };

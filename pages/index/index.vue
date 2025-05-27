@@ -186,7 +186,7 @@
 					{ id: 1, name: '温柔女声', desc: '适合故事讲解' },
 					{ id: 2, name: '专业男声', desc: '适合知识讲解' },
 					{ id: 3, name: '可爱童声', desc: '适合儿童互动' },
-					{ id: 4, name: '方言模式', desc: '苏州话特色' }
+					{ id: 4, name: '方言模式(粤语)', desc: '苏州话特色' }
 				]
 			}
 		},
@@ -246,7 +246,6 @@
 			async selectVoice(voiceId) {
 				try {
 					// 发送音色选择到服务器
-					await xiaozhiService.sendVoiceCommand(voiceId)
 					// 更新本地选中状态
 					this.selectedVoice = voiceId
 					// 显示操作反馈
@@ -359,7 +358,7 @@
 				this.startResponseTimeout();
 
 				// 发送到服务器
-				xiaozhiService.sendTextMessage(message).catch(error => {
+				xiaozhiService.sendTextMessage(message,this.selectedVoice).catch(error => {
 					this.addLog(`发送失败: ${error}`, 'error');
 					// 发送失败时隐藏加载动画
 					this.isLoading = false;
@@ -549,7 +548,7 @@
 				this.isLoading = true;
 
 				// 使用xiaozhi-service的统一接口发送录音
-				xiaozhiService.sendAudioFile(filePath)
+				xiaozhiService.sendAudioFile(filePath,progressCallback,this.selectedVoice)
 					.then(() => {
 						this.addLog('音频数据发送成功', 'success');
 					})
