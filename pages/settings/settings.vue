@@ -68,7 +68,7 @@ export default {
 				{ id: 1, name: '温柔女声', desc: '适合故事讲解' },
 				{ id: 2, name: '专业男声', desc: '适合知识讲解' },
 				{ id: 3, name: '可爱童声', desc: '适合儿童互动' },
-				{ id: 4, name: '方言模式(粤语)', desc: '苏州话特色' }
+				{ id: 4, name: '方言模式(粤语)', desc: '粤语特色' }
 			],
 			selectedVoice: 1,
 			autoConnect: true,
@@ -93,8 +93,8 @@ export default {
 				uni.$emit('voiceChanged', voiceId);
 				
 				uni.showToast({
-					title: '音色切换成功',
-					icon: 'success',
+					title: '音色切换成功,可能有延迟',
+					icon: 'none',
 					duration: 1500
 				});
 			} catch (error) {

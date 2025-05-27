@@ -24,7 +24,11 @@
 			
 			<view class="info-item">
 				<text class="label">开发团队</text>
-				<text class="content">苏州大学计算机科学与技术学院</text>
+				<view class="team-info">
+					<text class="content">苏州大学计算机科学与技术学院</text>
+					<text class="content">核心研究人员：唐子抗、彭凯恩、刘亦君、倪羽辰</text>
+					<text class="content">指导老师：邓滔、贾俊铖</text>
+				</view>
 			</view>
 			
 			<view class="info-item">
@@ -64,7 +68,7 @@ export default {
 		// 复制邮箱
 		copyEmail() {
 			uni.setClipboardData({
-				data: 'support@suda.edu.cn',
+				data: 'dengtao@suda.edu.cn',
 				success: () => {
 					uni.showToast({
 						title: '邮箱已复制',
@@ -77,7 +81,7 @@ export default {
 		// 复制电话
 		copyPhone() {
 			uni.setClipboardData({
-				data: '0512-67501234',
+				data: '',
 				success: () => {
 					uni.showToast({
 						title: '电话已复制',
@@ -251,4 +255,19 @@ export default {
 	color: #ccc;
 	font-size: 24rpx;
 }
+
+.team-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.team-info .content {
+    margin-bottom: 12rpx;
+}
+
+.team-info .content:last-child {
+    margin-bottom: 0;
+}
 </style>
+
+
