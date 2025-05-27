@@ -53,10 +53,13 @@
                 }
             },
             /* SDK配置 */
-            "sdkConfigs" : {
-                "geolocation" : {
-                    "system" : {
-                        "__platform__" : [ "ios", "android" ]
+            "sdkConfigs": {
+                "geolocation": {
+                    "system": {
+                        "__platform__": [
+                            "ios",
+                            "android"
+                        ]
                     }
                 }
             }

@@ -1,26 +1,31 @@
 <template>
 	<view class="container">
+		<view class="newPageHeader">
+  			<button class="nav-button" @click="navigateToNewPage">📤 分享</button>
+		</view>
 		<view class="header">
 			<text class="title">苏博导智能体</text>
 		</view>
 
 		<!-- 位置验证部分 -->
-		<view v-if="!isLocationVerified" class="location-verification">
-			<view class="location-status"
-				:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
-				<text>{{ locationStatusText }}</text>
+		<view class="status-box" :class="{ 'success-box': isLocationVerified, 'error-box': locationError }"v-if="shouldShowStatusBox">
+			<view class="centered-content">
+				<view class="location-status"
+					:class="{ 'location-denied': locationError, 'location-allowed': isLocationVerified }">
+					<text>{{ locationStatusText }}</text>
+				</view>
+				<view class="location-details" v-if="locationDetails">
+					<text>{{ locationDetails }}</text>
+				</view>
+				<button class="location-btn" :disabled="isCheckingLocation" @click="verifyUserLocation">{{ locationBtnText }}</button>
 			</view>
-			<view class="location-details" v-if="locationDetails">
-				<text>{{ locationDetails }}</text>
-			</view>
-			<button class="location-btn" @click="verifyUserLocation">{{ locationBtnText }}</button>
 		</view>
 
 
 		<!-- 服务器连接部分 -->
 		<view v-if="isLocationVerified" class="connection-section">
 			<view class="connection-header" @click="toggleConnectionPanel">
-				<view class="connection-title">
+				<view class="connection-title" v-if="shouldShowStatusBox">
 					<text>连接服务</text>
 					<text class="connection-status" :class="{ connected: isConnected }">{{ connectionStatusText
 					}}</text>
@@ -35,6 +40,7 @@
 					{{ isConnected ? '断开' : '连接' }}
 				</button>
 			</view>
+			<button class="voice-btn" @click.stop="toggleVoiceDrawer"v-if="isLocationVerified && isConnected">🎙️ 音色</button>
 		</view>
 
 		<!-- 消息记录部分 -->
@@ -108,6 +114,22 @@
 				</view>
 			</scroll-view>
 		</view> -->
+		<!--音色选择的内容区域-->
+		<view class="voice-drawer" :class="{ show: showVoiceDrawer }" v-show="isLocationVerified && isConnected">
+			<view class="drawer-mask" @click="toggleVoiceDrawer"></view>
+			<view class="drawer-content">
+				<view class="drawer-header">
+					<text class="title">选择音色</text>
+					<view class="close-btn" @click="toggleVoiceDrawer">×</view>
+				</view>
+				<scroll-view class="voice-list" scroll-y>
+					<view v-for="voice in voices" :key="voice.id"class="voice-item":class="{ selected: selectedVoice === voice.id }"@click="selectVoice(voice.id)">
+						<text>{{ voice.name }}</text>
+						<view class="check-icon" v-if="selectedVoice === voice.id">✓</view>
+					</view>
+				</scroll-view>
+  			</view>
+		</view>
 	</view>
 </template>
 
@@ -139,12 +161,12 @@
 				speechRecognitionTimer: null, // 语音识别结果显示定时器
 
 				// 位置验证相关数据
-				isLocationVerified: false,
-				isCheckingLocation: false,
-				locationError: false,
-				locationStatusText: '请验证您的位置',
-				locationDetails: '此应用只能在特定地点使用',				locationBtnText: '验证位置',
-				currentLocation: null,
+				isLocationVerified: false,	  //验证成功状态
+				isCheckingLocation: false,	  //防止重复点击
+				locationError: false,		  //错误状态
+				locationStatusText: '请验证您的位置', //状态提示文字
+				locationDetails: '此应用只能在特定地点使用',				locationBtnText: '验证位置',//错误信息和按钮文字
+				currentLocation: null,//存储位置信息
 				locationCheckInterval: null,
 				
 				// 触摸录音相关
@@ -156,12 +178,21 @@
 				isValidRecording: false, // 是否为有效录音
 
 				//追问
-				isInquiry:false
+				isInquiry:false,
+				//音色选择
+				showVoiceDrawer: false, // 控制抽屉显示
+				selectedVoice: 1,       // 当前选中的音色ID
+				voices: [               // 音色列表数据
+					{ id: 1, name: '温柔女声', desc: '适合故事讲解' },
+					{ id: 2, name: '专业男声', desc: '适合知识讲解' },
+					{ id: 3, name: '可爱童声', desc: '适合儿童互动' },
+					{ id: 4, name: '方言模式(粤语)', desc: '苏州话特色' }
+				]
 			}
 		},
 		onLoad() {
 			// 添加初始日志
-			this.addLog('准备就绪，请先验证位置...', 'info');
+			this.addLog('准备就绪,请先验证位置...', 'info');
 
 			// 初始化录音管理器
 			xiaozhiService.initRecorder(
@@ -197,7 +228,51 @@
 			// 页面隐藏时清除定时器
 			this.stopLocationCheck();
 		},
+		computed: {
+    		// 控制状态框显示的计算属性
+			shouldShowStatusBox() {
+				// 无论验证是否通过，只要未连接就显示
+				return !this.isConnected
+			}
+  		},
 		methods: {
+			// 切换音色抽屉显示状态
+			toggleVoiceDrawer() {
+				this.showVoiceDrawer = !this.showVoiceDrawer
+			// 安卓兼容：禁止背景滚动
+				uni.pageScrollTo({ scrollTop: 0, duration: 0 })
+			},
+			//选择音色的方法
+			async selectVoice(voiceId) {
+				try {
+					// 发送音色选择到服务器
+					// 更新本地选中状态
+					this.selectedVoice = voiceId
+					// 显示操作反馈
+					uni.showToast({
+					title: '音色切换成功',
+					icon: 'success',
+					duration: 1500
+					})
+				} catch (error) {
+					console.error('音色切换失败:', error)
+					uni.showToast({
+					title: '音色切换失败',
+					icon: 'none',
+					duration: 2000
+					})
+				}
+				// 关闭抽屉
+				this.toggleVoiceDrawer()
+			},
+			//为分享页设置页面跳转
+			navigateToNewPage() {
+      			uni.navigateTo({
+        		url: '/pages/index/new-page',
+        		success: () => console.log('跳转成功'),
+        		fail: (err) => console.error('跳转失败', err)
+      			});
+    				},
 			// 切换连接状态
 			toggleConnection() {
 				if (this.isConnected) {
@@ -224,6 +299,10 @@
 						this.isConnected = true;
 						this.connectionStatusText = '已连接';
 						this.addLog('已连接到服务器', 'success');
+						// 新增：关闭状态提示框
+						this.showConnectionPanel = false; 
+						// 新增：重置位置验证提示
+						this.locationDetails = '位置验证通过，已建立连接'; 
 					},
 					// 消息接收回调
 					(message) => {
@@ -279,7 +358,7 @@
 				this.startResponseTimeout();
 
 				// 发送到服务器
-				xiaozhiService.sendTextMessage(message).catch(error => {
+				xiaozhiService.sendTextMessage(message,this.selectedVoice).catch(error => {
 					this.addLog(`发送失败: ${error}`, 'error');
 					// 发送失败时隐藏加载动画
 					this.isLoading = false;
@@ -469,7 +548,7 @@
 				this.isLoading = true;
 
 				// 使用xiaozhi-service的统一接口发送录音
-				xiaozhiService.sendAudioFile(filePath)
+				xiaozhiService.sendAudioFile(filePath,progressCallback,this.selectedVoice)
 					.then(() => {
 						this.addLog('音频数据发送成功', 'success');
 					})
@@ -834,7 +913,35 @@
 	}
 </script>
 
-<style>
+<style scoped>
+	/* 添加按钮样式 */
+	.newPageHeader {
+		position: relative;
+		padding: 15rpx 0;
+		}
+
+	.nav-button {
+		position: absolute;
+		left: 20rpx;
+		top: 50%;
+		transform: translateY(-50%);
+		padding: 8rpx 20rpx;
+		background: rgba(255, 255, 255, 0.9);
+		border: 1rpx solid #eaeaea;
+		border-radius: 30rpx;
+		font-size: 24rpx;
+		color: #333;
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+	}
+
+	.nav-button::after {
+		content: '';
+		border: none; /* 去除uniapp按钮默认边框 */
+	}
 	.container {
 		padding: 20rpx;
 		background-color: #f8f9fa;
@@ -869,12 +976,6 @@
 		border: 1rpx solid #eaeaea;
 		text-align: center;
 	}
-
-	.location-status {
-		font-size: 30rpx;
-		margin-bottom: 10rpx;
-	}
-
 	.location-allowed {
 		color: #52c41a;
 	}
@@ -882,28 +983,12 @@
 	.location-denied {
 		color: #ff4d4f;
 	}
-
-	/* 位置验证样式 */
-	.location-verification {
-		background-color: #fff;
-		border-radius: 10rpx;
-		padding: 30rpx 20rpx;
-		margin-bottom: 20rpx;
-		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-		text-align: center;
-	}
-
 	.location-status {
-		font-size: 32rpx;
-		font-weight: bold;
-		margin-bottom: 20rpx;
+		font-size: 36rpx;
+		margin-bottom: 30rpx;
+		line-height: 1.4;
 		color: #1890ff;
 	}
-
-	.location-denied {
-		color: #ff4d4f;
-	}
-
 	.location-allowed {
 		color: #52c41a;
 	}
@@ -911,20 +996,23 @@
 	.location-details {
 		font-size: 28rpx;
 		color: #666;
-		margin-bottom: 30rpx;
+		line-height: 1.6;
+		padding: 0 40rpx;
 	}
 
 	.location-btn {
-		background-color: #1890ff;
-		color: white;
-		font-size: 28rpx;
-		padding: 0 30rpx;
-		height: 70rpx;
-		line-height: 70rpx;
-		margin: 0 auto;
 		width: 60%;
+		min-width: 240rpx;
+		max-width: 400rpx;
+		height: 80rpx;
+		line-height: 80rpx;
+		border-radius: 40rpx;
+		background: #1890ff;
+		color: white;
+		font-size: 32rpx;
+		margin: 0 auto 20rpx;
+		transition: all 0.3s;
 	}
-
 	.connection-section {
 		background-color: #fff;
 		border-radius: 16rpx;
@@ -1547,5 +1635,155 @@
 	.log-entry.warning {
 		color: #faad14;
 		background-color: rgba(250, 173, 20, 0.1);
+	}
+	/* 使更新后文字和按钮处于正确位置 */
+	.status-box {
+		position: relative;
+		min-height: 300rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		padding: 40rpx;
+	}
+	.centered-content {
+		width: 100%;
+		text-align: center;
+	}
+
+	.status-box.hide {
+		max-height: 0;
+		opacity: 0;
+		padding: 0;
+		margin: 0;
+	}
+	.location-status {
+		font-size: 36rpx;
+		margin-bottom: 30rpx;
+		color: #333;
+		line-height: 1.4;
+	}
+	.verify-button {
+		width: 60%;
+		min-width: 240rpx;
+		max-width: 400rpx;
+		height: 80rpx;
+		line-height: 80rpx;
+		border-radius: 40rpx;
+		background: #1890ff;
+		color: white;
+		font-size: 32rpx;
+		margin: 0 auto 20rpx;
+		transition: all 0.3s;
+	}
+	.details-text {
+		font-size: 28rpx;
+		color: #666;
+		line-height: 1.6;
+		padding: 0 40rpx;
+	}
+	/* 在原有样式基础上补充 */
+	.success-box {
+		background: #f6ffed;
+		border: 1px solid #b7eb8f;
+	}
+
+	.error-box {
+		background: #fff2f0;
+		border: 1px solid #ffccc7;
+	}
+
+	/* 未验证状态 */
+	.status-box:not(.success-box):not(.error-box) {
+		background: #fffbe6;
+		border: 1px solid #ffe58f;
+	}
+	/*改变音色系统的样式 */
+	.voice-drawer {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 9999;
+		pointer-events: none; /* 初始禁止交互 */
+	}
+
+	/* 显示时的遮罩层 */
+	.drawer-mask {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		background: rgba(0,0,0,0.5);
+		opacity: 0;
+		transition: opacity 0.3s;
+	}
+
+	/* 抽屉内容区域 */
+	.drawer-content {
+		position: absolute;
+		bottom: -100%;
+		left: 0;
+		width: 100%;
+		height: 65vh;
+		background: #fff;
+		border-radius: 32rpx 32rpx 0 0;
+		box-shadow: 0 -8rpx 40rpx rgba(0,0,0,0.15);
+		transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+		padding: 32rpx;
+		pointer-events: auto;
+	}
+
+	/* 显示状态 */
+	.voice-drawer.show {
+		pointer-events: auto;
+	}
+	.voice-drawer.show .drawer-mask {
+		opacity: 1;
+	}
+	.voice-drawer.show .drawer-content {
+		bottom: 0;
+	}
+
+	/* 音色列表项 */
+	.voice-item {
+		padding: 32rpx;
+		margin: 20rpx 0;
+		border-radius: 16rpx;
+		background: #f8f8f8;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		transition: all 0.2s;
+		position: relative;
+	}
+
+	.voice-item.selected {
+		background: linear-gradient(135deg, #e3f2fd, #f0f9ff);
+		box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.2);
+	}
+
+	/* 选中标记 */
+	.check-icon {
+		color: #1890ff;
+		font-weight: bold;
+		font-size: 36rpx;
+	}
+
+	/* 触发按钮样式 */
+	.voice-btn {
+		padding: 8rpx 24rpx;
+		background: rgba(255,255,255,0.95);
+		border: 1rpx solid #e0e0e0;
+		border-radius: 48rpx;
+		font-size: 28rpx;
+		color: #333;
+		box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.08);
+		margin-left: 20rpx;
+		transition: all 0.2s;
+	}
+
+	.voice-btn:active {
+		transform: scale(0.96);
+		background: #f8f8f8;
 	}
 </style>
