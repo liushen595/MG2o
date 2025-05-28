@@ -9,6 +9,9 @@
  * @license MIT
  */
 
+// 导入全局状态管理，获取音色映射
+import useGlobalSettings from '../composables/useGlobalSettings.js';
+
 let websocket = null;
 let isConnected = false;
 let messageCallbacks = [];
@@ -21,18 +24,23 @@ let isPlaying = false;
 // 添加语音识别结果回调
 let onSpeechRecognitionCallback = null;
 
+// 获取全局设置实例
+const globalSettings = useGlobalSettings();
+const { voiceMap, getCurrentVoiceCode } = globalSettings;
+
+// 默认音色 - 使用全局状态管理
+let currentVoice = getCurrentVoiceCode();
+
 /**
  * 连接到小智服务器
  * @param {String} url WebSocket服务器地址
  * @param {Function} onConnectCallback 连接成功回调
  * @param {Function} onMessageCallback 消息接收回调
  * @param {Function} onCloseCallback 连接关闭回调
- * @param {Function} onErrorCallback 错误回调
+ * @param {Function} onErrorCallback 错误回调 
  * @param {Function} onSpeechRecognition 语音识别结果回调
  * @returns {Promise} 连接结果
  */
-// 默认音色
-let currentVoice = 'zh-CN-XiaoyiNeural';
 // 新增设置音色的方法
 const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallback, onErrorCallback, onSpeechRecognition) => {
   return new Promise((resolve, reject) => {
@@ -232,22 +240,20 @@ const sendTextMessage = (message, voiceId = 1) => {
       return;
     }
 
-    const voiceMap = {
-      1: 'zh-CN-XiaoyiNeural',
-      2: 'zh-CN-YunxiNeural',
-      3: 'zh-CN-XiaoxiaoNeural',
-      4: 'zh-HK-HiuGaaiNeural'
-    };
     try {
+      // 使用全局音色映射
+      const selectedVoice = voiceMap[voiceId];
+
       // 直接发送listen消息
       const listenMessage = {
         type: 'listen',
         mode: 'manual',
         state: 'detect',
         text: message,
-        voice: voiceMap[voiceId] || 'zh-CN-XiaoyiNeural' // 使用当前选择的音色
+        voice: selectedVoice // 使用全局状态管理中的音色
       };
-      //listenMessage.voice = 'zh-CN-XiaoyiNeural'//这一步不再被需要
+
+      console.log('发送文本消息，使用音色:', selectedVoice);
       websocket.send({
         data: JSON.stringify(listenMessage),
         success: () => {
@@ -548,16 +554,12 @@ const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
     }
 
     console.log('准备发送音频文件:', filePath);
-    //新增加音色处理
-    const voiceMap = {
-      1: 'zh-CN-XiaoyiNeural',    // 温柔女声
-      2: 'zh-CN-YunxiNeural',     // 专业男声
-      3: 'zh-CN-XiaoxiaoNeural',  // 可爱童声
-      4: 'zh-HK-HiuGaaiNeural'
 
-    };
-    currentVoice = voiceMap[voiceId];
+    // 使用全局音色映射
+    const selectedVoice = voiceMap[voiceId];
+    currentVoice = selectedVoice;
     console.log('当前音色设置为:', currentVoice);
+
     try {
       // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
       const listenStartMessage = {
@@ -565,7 +567,7 @@ const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
         mode: 'manual',
         state: 'start',
         format: 'mp3',
-        voice: voiceMap[voiceId]
+        voice: selectedVoice // 使用全局状态管理中的音色
       };
       // 使用JSON.stringify()序列化消息
       const startData = JSON.stringify(listenStartMessage);
@@ -589,17 +591,15 @@ const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
                 // 不加任何额外参数
                 success: () => {
                   console.log('发送音频数据成功，大小:', audioData.byteLength, '字节');
-
                   // 4. 发送录音结束信号
                   const listenEndMessage = {
                     type: 'listen',
                     mode: 'manual',
                     state: 'stop',
                     format: 'mp3',
-                    voice: voiceMap[voiceId]//使用当前选择的音色而不是写定的音色
+                    voice: selectedVoice // 使用全局状态管理中的音色
                   };
-                  //listenEndMessage.voice = 'zh-CN-XiaoxiaoNeural'; // 设置语音类型
-                  console.log('daiyingse发送录音结束信号,', listenEndMessage.voice);
+                  console.log('发送录音结束信号，使用音色:', listenEndMessage.voice);
 
                   // 增加一点延迟再发送结束信号
                   setTimeout(() => {

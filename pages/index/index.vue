@@ -43,12 +43,18 @@
 	import MessageInput from '../../components/home/MessageInput.vue';
 	import AudioVisualizer from '../../components/home/AudioVisualizer.vue';
 	import SpeechRecognition from '../../components/home/SpeechRecognition.vue';
+
 	// 导入可复用逻辑
 	import useLogger from '../../composables/home/useLogger.js';
 	import useMessages from '../../composables/home/useMessages.js';
 	import useConnection from '../../composables/home/useConnection.js';
 	import useAudioRecording from '../../composables/home/useAudioRecording.js';
 	import useNavigation from '../../composables/home/useNavigation.js';
+	import useGlobalSettings from '../../composables/useGlobalSettings.js';
+
+	// 初始化全局设置
+	const { settings, loadAllSettings } = useGlobalSettings();
+
 	// 初始化日志系统
 	const { logs, logScrollTop, addLog } = useLogger();
 	// 位置验证已移至独立页面，不再需要位置服务
@@ -81,7 +87,6 @@
 		clearResponseTimeout,
 		addLog
 	);
-
 	// 从消息服务中直接使用响应式状态
 	const {
 		messages,
@@ -91,7 +96,7 @@
 		isUserScrolling,
 		hasNewMessage,
 		speechRecognitionText,
-		selectedVoice: messageSelectedVoice,
+		// 移除 selectedVoice，现在使用全局设置
 		sendMessage,
 		addMessage,
 		onScroll,
@@ -104,12 +109,9 @@
 	setCallbacks(
 		messageService.handleServerMessage,
 		messageService.handleSpeechRecognition
-	);
-
-	// 初始化音频录制服务
+	);	// 初始化音频录制服务
 	const audioService = useAudioRecording(
 		isConnected,
-		messageSelectedVoice,  // 使用从消息服务来的音色设置
 		startResponseTimeout,
 		clearResponseTimeout,
 		addLog
@@ -138,25 +140,17 @@
 
 		// 从本地存储加载音色设置
 		loadSettings();
-
 		// 初始化录音功能
 		initRecording();
 
-		// 监听音色变更事件
-		uni.$on('voiceChanged', (voiceId) => {
-			messageSelectedVoice.value = voiceId;
-			addLog(`音色已切换: ${voiceId}`, 'info');
-		});
+		// 加载全局设置
+		loadAllSettings();
 
 		// 自动连接服务器
 		connectToServer();
 	}
-
 	// 清理应用资源
 	function cleanupApp() {
-		// 页面销毁时移除事件监听
-		uni.$off('voiceChanged');
-
 		// 清理资源
 		cleanupMessagesResources();
 		cleanupAudioResources();

@@ -1,7 +1,10 @@
 import { ref } from 'vue';
 import xiaozhiService from '../../utils/xiaozhi-service.js';
+import useGlobalSettings from '../useGlobalSettings.js';
 
-export default function useAudioRecording(isConnected, selectedVoice, startResponseTimeout, clearResponseTimeout, addLog) {
+export default function useAudioRecording(isConnected, startResponseTimeout, clearResponseTimeout, addLog) {
+    // 引入全局设置
+    const { settings } = useGlobalSettings();
     const isRecording = ref(false);
     const audioVisualizerData = ref(Array(10).fill(0));
     const visualizerTimer = ref(null);
@@ -91,15 +94,11 @@ export default function useAudioRecording(isConnected, selectedVoice, startRespo
         }
 
         // 停止可视化
-        stopAudioVisualization();
-
-        // 定义进度回调函数
+        stopAudioVisualization();        // 定义进度回调函数
         const progressCallback = (progress) => {
             addLog(`上传进度: ${Math.round(progress * 100)}%`, 'info');
-        };
-
-        // 停止录音并发送
-        xiaozhiService.stopRecordingAndSend(progressCallback, selectedVoice.value)
+        };        // 停止录音并发送，使用全局设置中的音色
+        xiaozhiService.stopRecordingAndSend(progressCallback, settings.selectedVoice)
             .catch(error => {
                 addLog(`录音停止错误: ${error}`, 'error');
             });
@@ -109,15 +108,12 @@ export default function useAudioRecording(isConnected, selectedVoice, startRespo
     function sendRecordFile(filePath) {
         addLog('正在准备发送录音文件...', 'info');
 
-        startResponseTimeout(); // 开始响应超时计时器
-
+        startResponseTimeout(); // 开始响应超时计时器        
         // 定义进度回调函数
         const progressCallback = (progress) => {
             addLog(`上传进度: ${progress}%`, 'info');
-        };
-
-        // 使用xiaozhi-service的统一接口发送录音
-        xiaozhiService.sendAudioFile(filePath, progressCallback, selectedVoice.value)
+        };        // 使用xiaozhi-service的统一接口发送录音，使用全局设置中的音色
+        xiaozhiService.sendAudioFile(filePath, progressCallback, settings.selectedVoice)
             .then(() => {
                 addLog('音频数据发送成功', 'success');
             })

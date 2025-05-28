@@ -1,5 +1,6 @@
 import { ref, nextTick } from 'vue';
 import xiaozhiService from '../../utils/xiaozhi-service.js';
+import useGlobalSettings from '../useGlobalSettings.js';
 
 export default function useMessages(isConnected, startResponseTimeout, clearResponseTimeout, addLog) {
     const messages = ref([]);
@@ -17,10 +18,8 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
     const speechRecognitionText = ref('');
     const speechRecognitionTimer = ref(null);
 
-    // 音色选择
-    const selectedVoice = ref(1);
-
-    // 发送消息
+    // 使用全局设置管理音色选择
+    const { settings, getCurrentVoiceCode } = useGlobalSettings();    // 发送消息
     function sendMessage() {
         if (!messageText.value.trim() || !isConnected.value) return;
 
@@ -36,8 +35,8 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         // 设置响应超时计时器
         startResponseTimeout();
 
-        // 发送到服务器
-        xiaozhiService.sendTextMessage(message, selectedVoice.value).catch(error => {
+        // 发送到服务器，使用全局设置中的音色
+        xiaozhiService.sendTextMessage(message, settings.selectedVoice).catch(error => {
             addLog(`发送失败: ${error}`, 'error');
             // 发送失败时隐藏加载动画
             isLoading.value = false;
@@ -185,15 +184,10 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
             // 确保隐藏加载动画
             isLoading.value = false;
         }
-    }
-
-    // 加载设置
+    }    // 加载设置
     function loadSettings() {
-        try {
-            selectedVoice.value = uni.getStorageSync('selectedVoice') || 1;
-        } catch (error) {
-            console.error('加载设置失败:', error);
-        }
+        // 不再需要单独加载设置，因为使用全局状态管理
+        // 全局设置会自动加载并同步
     }
 
     // 清理资源
@@ -207,9 +201,7 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
             clearTimeout(speechRecognitionTimer.value);
             speechRecognitionTimer.value = null;
         }
-    }
-
-    return {
+    } return {
         messages,
         messageText,
         isLoading,
@@ -217,7 +209,7 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         isUserScrolling,
         hasNewMessage,
         speechRecognitionText,
-        selectedVoice,
+        // 移除 selectedVoice，现在使用全局状态管理
         sendMessage,
         addMessage,
         onScroll,
