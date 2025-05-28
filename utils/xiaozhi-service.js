@@ -32,7 +32,7 @@ let onSpeechRecognitionCallback = null;
  * @returns {Promise} 连接结果
  */
 // 默认音色
-let currentVoice = 'zh-CN-XiaoyiNeural'; 
+let currentVoice = 'zh-CN-XiaoyiNeural';
 // 新增设置音色的方法
 const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallback, onErrorCallback, onSpeechRecognition) => {
   return new Promise((resolve, reject) => {
@@ -225,7 +225,7 @@ const disconnectFromServer = () => {
  * @param {String} voice 语音音色 
  * @returns {Promise} 发送结果
  */
-const sendTextMessage = (message,voiceId=1) => {
+const sendTextMessage = (message, voiceId = 1) => {
   return new Promise((resolve, reject) => {
     if (!message || !websocket || !isConnected) {
       reject('WebSocket未连接或消息为空');
@@ -490,7 +490,7 @@ const startRecording = (options = {}) => {
  * @param {Number} voiceId 音色ID
  * @returns {Promise} 上传结果
  */
-const stopRecordingAndSend = (progressCallback,voiceId) => {
+const stopRecordingAndSend = (progressCallback, voiceId) => {
   return new Promise((resolve, reject) => {
     if (!recorderManager || !isRecording) {
       reject('没有正在进行的录音');
@@ -515,7 +515,7 @@ const stopRecordingAndSend = (progressCallback,voiceId) => {
         // 确保获得文件后立即发送，避免被下一个录音覆盖
         const currentFilePath = recordFilePath;
 
-        sendAudioFile(currentFilePath, progressCallback,voiceId)
+        sendAudioFile(currentFilePath, progressCallback, voiceId)
           .then(resolve)
           .catch(reject);
       } else {
@@ -540,7 +540,7 @@ const stopRecordingAndSend = (progressCallback,voiceId) => {
  * @param {Function} progressCallback 上传进度回调
  * @returns {Promise} 上传结果
  */
-const sendAudioFile = (filePath, progressCallback,voiceId=1) => {
+const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
   return new Promise((resolve, reject) => {
     if (!websocket || !isConnected) {
       reject('WebSocket未连接');
@@ -548,25 +548,25 @@ const sendAudioFile = (filePath, progressCallback,voiceId=1) => {
     }
 
     console.log('准备发送音频文件:', filePath);
-      //新增加音色处理
-      const voiceMap = {
-        1: 'zh-CN-XiaoyiNeural',    // 温柔女声
-        2: 'zh-CN-YunxiNeural',     // 专业男声
-        3: 'zh-CN-XiaoxiaoNeural',  // 可爱童声
-        4: 'zh-HK-HiuGaaiNeural'  
-     
+    //新增加音色处理
+    const voiceMap = {
+      1: 'zh-CN-XiaoyiNeural',    // 温柔女声
+      2: 'zh-CN-YunxiNeural',     // 专业男声
+      3: 'zh-CN-XiaoxiaoNeural',  // 可爱童声
+      4: 'zh-HK-HiuGaaiNeural'
+
+    };
+    currentVoice = voiceMap[voiceId];
+    console.log('当前音色设置为:', currentVoice);
+    try {
+      // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
+      const listenStartMessage = {
+        type: 'listen',
+        mode: 'manual',
+        state: 'start',
+        format: 'mp3',
+        voice: voiceMap[voiceId]
       };
-      currentVoice = voiceMap[voiceId];
-      console.log('当前音色设置为:', currentVoice);
-      try {
-        // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
-        const listenStartMessage = {
-          type: 'listen',
-          mode: 'manual',
-          state: 'start',
-          format: 'mp3',
-          voice: voiceMap[voiceId] 
-        };
       // 使用JSON.stringify()序列化消息
       const startData = JSON.stringify(listenStartMessage);
 
