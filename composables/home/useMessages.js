@@ -185,10 +185,10 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
             isLoading.value = false;
         }
     }    // 加载设置
-    function loadSettings() {
-        // 不再需要单独加载设置，因为使用全局状态管理
-        // 全局设置会自动加载并同步
-    }
+    // function loadSettings() {
+    //     // 不再需要单独加载设置，因为使用全局状态管理
+    //     // 全局设置会自动加载并同步
+    // }
 
     // 清理资源
     function cleanupResources() {
@@ -216,7 +216,8 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         scrollToBottom,
         handleSpeechRecognition,
         handleServerMessage,
-        loadSettings,
+        // 不再需要单独加载设置
+        // loadSettings,
         cleanupResources
     };
 }

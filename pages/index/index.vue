@@ -80,6 +80,7 @@
 		clearResponseTimeout,
 		setCallbacks
 	} = connectionService;
+
 	// 初始化消息系统
 	const messageService = useMessages(
 		isConnected,
@@ -87,6 +88,7 @@
 		clearResponseTimeout,
 		addLog
 	);
+
 	// 从消息服务中直接使用响应式状态
 	const {
 		messages,
@@ -109,7 +111,9 @@
 	setCallbacks(
 		messageService.handleServerMessage,
 		messageService.handleSpeechRecognition
-	);	// 初始化音频录制服务
+	);
+
+	// 初始化音频录制服务
 	const audioService = useAudioRecording(
 		isConnected,
 		startResponseTimeout,
@@ -138,8 +142,9 @@
 		// 添加初始日志
 		addLog('准备就绪,正在连接服务器...', 'info');
 
-		// 从本地存储加载音色设置
-		loadSettings();
+		// 从本地存储加载音色设置, 已更换为全局设置
+		// loadSettings();
+
 		// 初始化录音功能
 		initRecording();
 
