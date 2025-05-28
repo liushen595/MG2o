@@ -3,7 +3,7 @@
 		<view class="header">
 			<image class="logo" src="/static/logo.png" mode="aspectFit"></image>
 			<text class="app-name">苏博导智能体</text>
-			<text class="version">版本 1.0.0</text>
+			<text class="version">版本 2.0.1</text>
 		</view>
 
 		<view class="info-section">
@@ -43,7 +43,7 @@
 			</view>
 			<view class="contact-item" @click="copyEmail">
 				<text class="contact-label">邮箱</text>
-				<text class="contact-value">support@suda.edu.cn</text>
+				<text class="contact-value">dengtao@suda.edu.cn</text>
 			</view>
 			<view class="contact-item" @click="copyPhone">
 				<text class="contact-label">电话</text>
@@ -79,7 +79,7 @@
 	// 复制电话
 	const copyPhone = () => {
 		uni.setClipboardData({
-			data: '',
+			data: '0512-67501234',
 			success: () => {
 				uni.showToast({
 					title: '电话已复制',
