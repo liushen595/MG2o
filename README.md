@@ -21,38 +21,51 @@
 ```
 mg2o/
 ├── App.vue                      # 应用入口文件
-├── index.html                   # HTML入口文件  
+├── index.html                   # HTML入口文件
 ├── main.js                      # 主JS文件
 ├── manifest.json                # 小程序配置文件
 ├── pages.json                   # 页面配置
 ├── uni.scss                     # 全局样式
-├── docs/                        # 项目文档
-│   ├── architecture.md          # 架构文档
-│   └── CSDN.md                  # 技术详解
-├── pages/                       # 页面目录
-│   └── index/                   # 主页
-│       ├── index.vue            # 主页视图 (已优化)
-│       └── index.backup.vue     # 备份文件
 ├── components/                  # UI组件
-│   └── home/                    # 首页组件
-│       ├── MessageInput.vue     # 消息输入组件
-│       ├── MessageList.vue      # 消息列表组件
-│       ├── TopNavBar.vue        # 顶部导航栏
-│       ├── SideDrawer.vue       # 侧拉抽屉
-│       ├── AudioVisualizer.vue  # 录音可视化
-│       └── SpeechRecognition.vue # 语音识别显示
+│   └── home/                    # 首页相关组件
+│       ├── AudioVisualizer.vue     # 音频可视化组件
+│       ├── LocationVerification.vue # 位置验证组件
+│       ├── MessageInput.vue        # 消息输入组件
+│       ├── MessageList.vue         # 消息列表组件
+│       ├── SideDrawer.vue          # 侧边栏组件
+│       ├── SpeechRecognition.vue   # 语音识别结果组件
+│       └── TopNavBar.vue           # 顶部导航栏组件
 ├── composables/                 # 可复用逻辑
+│   ├── useGlobalSettings.js     # 全局设置
 │   └── home/                    # 首页相关逻辑
-│       ├── useConnection.js     # 连接管理 (已优化)
+│       ├── useConnection.js     # 连接管理
 │       ├── useMessages.js       # 消息处理
 │       ├── useAudioRecording.js # 音频录制
-│       ├── useNavigation.js     # 导航管理 (新增)
-│       └── useLogger.js         # 日志记录
+│       ├── useLocation.js       # 位置验证逻辑
+│       ├── useLogger.js         # 日志记录
+│       └── useNavigation.js     # 导航管理
+├── pages/                       # 页面目录
+│   ├── about/                   # 关于页面
+│   │   └── about.vue
+│   ├── index/                   # 主页
+│   │   └── index.vue            # 主页视图
+│   ├── location/                # 位置验证页面
+│   │   └── location.vue
+│   ├── settings/                # 设置页面
+│   │   └── settings.vue
+│   └── share/                   # 分享页面
+│       └── share.vue
+├── utils/                       # 工具类
+│   ├── location-service.js      # 位置服务
+│   └── xiaozhi-service.js       # 小智语音交互服务
 ├── static/                      # 静态资源
-└── utils/                       # 工具类
-    ├── location-service.js      # 位置服务
-    └── xiaozhi-service.js       # 小智语音交互服务
-```
+│   ├── logo.png
+│   ├── wx.png                   # 微信二维码
+│   └── 二维码.jpg
+└── docs/                        # 项目文档
+    ├── architecture.md          # 架构文档
+    ├── CSDN.md                  # 技术详解
+    └── development-guidelines.md # 开发规范
 
 ## ✨ 特点
 
