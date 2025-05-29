@@ -10,7 +10,11 @@
 				@reconnect="reconnectServer" />
 
 			<!-- 位置验证已移至独立页面 -->
-
+						<!-- 引言显示区域 -->
+			<Introduction 
+				:text="introductionState.introductionText"
+				:show-introduction="introductionState.showIntroduction"
+				/>
 			<!-- 消息记录部分 -->
 			<view class="message-list-container">
 				<MessageList :messages="messages" :lastMessageId="lastMessageId" :isLoading="isLoading"
@@ -29,7 +33,7 @@
 
 			<!-- 识别结果显示 -->
 			<SpeechRecognition :text="speechRecognitionText" />
-		</view>
+	    </view>
 	</view>
 </template>
 
@@ -43,6 +47,7 @@
 	import MessageInput from '../../components/home/MessageInput.vue';
 	import AudioVisualizer from '../../components/home/AudioVisualizer.vue';
 	import SpeechRecognition from '../../components/home/SpeechRecognition.vue';
+	import Introduction from '../../components/home/Introduction.vue';
 
 	// 导入可复用逻辑
 	import useLogger from '../../composables/home/useLogger.js';
@@ -51,7 +56,7 @@
 	import useAudioRecording from '../../composables/home/useAudioRecording.js';
 	import useNavigation from '../../composables/home/useNavigation.js';
 	import useGlobalSettings from '../../composables/useGlobalSettings.js';
-
+	import useIntroduction from '../../composables/home/useItroduction.js';
 	// 初始化全局设置
 	const { settings, loadAllSettings } = useGlobalSettings();
 
@@ -67,7 +72,9 @@
 		null, // 语音识别回调稍后设置
 		addLog
 	);
-
+	//初始化引言区域
+	const { state: introductionState, show, hide } = useIntroduction()
+	//const introductionText = ref("您好，欢迎使用苏州大学博物馆导航系统！");
 	// 从连接服务中解构所有需要的状态和方法
 	const {
 		serverUrl,
@@ -99,14 +106,17 @@
 		hasNewMessage,
 		speechRecognitionText,
 		// 移除 selectedVoice，现在使用全局设置
-		sendMessage,
+		sendMessage: originalSendMessage, // 重命名原始方法
 		addMessage,
 		onScroll,
 		scrollToBottom,
 		loadSettings,
 		cleanupResources: cleanupMessagesResources
 	} = messageService;
-
+	const sendMessage = () => {
+		hide(); // 隐藏引言
+		originalSendMessage(); // 调用原始发送方法
+	};
 	// 设置连接服务的回调函数
 	setCallbacks(
 		messageService.handleServerMessage,
@@ -129,16 +139,20 @@
 		initRecording,
 		startTouchRecording,
 		touchMoveRecording,
-		endTouchRecording,
+		endTouchRecording: originalEndTouchRecording,
 		cancelTouchRecording,
 		cleanupResources: cleanupAudioResources
 	} = audioService;
-
+	const endTouchRecording = () => {
+		hide(); // 隐藏引言
+		originalEndTouchRecording(); // 调用原始方法
+	};
 	// 初始化导航功能
 	const { showDrawer, openDrawer, closeDrawer, navigateToPage } = useNavigation();
 
 	// 初始化应用
 	function initializeApp() {
+		show();
 		// 添加初始日志
 		addLog('准备就绪,正在连接服务器...', 'info');
 
@@ -153,6 +167,8 @@
 
 		// 自动连接服务器
 		connectToServer();
+		//连接后显示引言
+		showIntroduction.value = true
 	}
 	// 清理应用资源
 	function cleanupApp() {
