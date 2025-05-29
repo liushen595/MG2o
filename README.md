@@ -66,6 +66,7 @@ mg2o/
     ├── architecture.md          # 架构文档
     ├── CSDN.md                  # 技术详解
     └── development-guidelines.md # 开发规范
+```
 
 ## ✨ 特点
 
