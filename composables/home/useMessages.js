@@ -14,10 +14,6 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
     const lastScrollTop = ref(0);
     const hasNewMessage = ref(false);
 
-    // 语音识别相关
-    const speechRecognitionText = ref('');
-    const speechRecognitionTimer = ref(null);
-
     // 使用全局设置管理音色选择
     const { settings, getCurrentVoiceCode } = useGlobalSettings();    // 发送消息
     function sendMessage() {
@@ -113,28 +109,14 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
                 lastMessageId.value = 'msg-' + lastIndex;
             }
         });
-    }
-
-    // 处理语音识别结果
+    }    // 处理语音识别结果
     function handleSpeechRecognition(text) {
         if (!text) return;
 
         addLog(`收到语音识别结果: ${text}`, 'info');
 
-        // 显示语音识别结果
-        speechRecognitionText.value = text;
-
-        // 同时添加到消息列表，作为用户消息显示在右侧
+        // 直接添加到消息列表，作为用户消息显示在右侧
         addMessage(text, true);
-
-        // 设置定时器，一段时间后清除语音识别结果显示
-        if (speechRecognitionTimer.value) {
-            clearTimeout(speechRecognitionTimer.value);
-        }
-
-        speechRecognitionTimer.value = setTimeout(() => {
-            speechRecognitionText.value = '';
-        }, 5000); // 5秒后清除显示
     }
 
     // 处理服务器消息
@@ -196,11 +178,6 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
             clearTimeout(scrollTimeout.value);
             scrollTimeout.value = null;
         }
-
-        if (speechRecognitionTimer.value) {
-            clearTimeout(speechRecognitionTimer.value);
-            speechRecognitionTimer.value = null;
-        }
     } return {
         messages,
         messageText,
@@ -208,7 +185,6 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         lastMessageId,
         isUserScrolling,
         hasNewMessage,
-        speechRecognitionText,
         // 移除 selectedVoice，现在使用全局状态管理
         sendMessage,
         addMessage,
