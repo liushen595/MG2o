@@ -121,7 +121,7 @@ const connectToServer = (url, onConnectCallback, onMessageCallback, onCloseCallb
 
             // 处理不同类型的消息
             if (message.type === 'hello') {
-              console.log('服务器回应：', message.message);
+              console.log('服务器回应：', message.type);
             } else if (message.type === 'tts') {
               // TTS状态消息
               if (message.state === 'start') {
