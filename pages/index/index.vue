@@ -2,7 +2,6 @@
 	<view class="container">
 		<!-- 左侧侧拉导航栏 -->
 		<SideDrawer v-model:showDrawer="showDrawer" @navigate="navigateToPage" />
-
 		<!-- 主内容区域 -->
 		<view class="main-content">
 			<!-- 顶部导航栏 -->
@@ -10,11 +9,10 @@
 				@reconnect="reconnectServer" />
 
 			<!-- 位置验证已移至独立页面 -->
-						<!-- 引言显示区域 -->
-			<Introduction 
-				:text="introductionState.introductionText"
-				:show-introduction="introductionState.showIntroduction"
-				/>
+			<!-- 引言显示区域 -->
+			<Introduction :text="introductionState.introductionText"
+				:show-introduction="introductionState.showIntroduction" />
+
 			<!-- 消息记录部分 -->
 			<view class="message-list-container">
 				<MessageList :messages="messages" :lastMessageId="lastMessageId" :isLoading="isLoading"
@@ -24,29 +22,20 @@
 
 			<!-- 消息输入部分 -->
 			<MessageInput v-model:messageText="messageText" :isConnected="isConnected" :isRecording="isRecording"
-				:isCancelRecording="isCancelRecording" @send="sendMessage" @touchStart="startTouchRecording"
-				@touchMove="touchMoveRecording" @touchEnd="endTouchRecording" @touchCancel="cancelTouchRecording" />
-
-			<!-- 录音可视化显示 -->
-			<AudioVisualizer :show="isLocationVerified && isRecording" :audioVisualizerData="audioVisualizerData"
-				:isCancelRecording="isCancelRecording" />
-
-			<!-- 识别结果显示 -->
-			<SpeechRecognition :text="speechRecognitionText" />
-	    </view>
+				:isCancelRecording="isCancelRecording" :audioVisualizerData="audioVisualizerData" @send="sendMessage"
+				@touchStart="startTouchRecording" @touchMove="touchMoveRecording" @touchEnd="endTouchRecording"
+				@touchCancel="cancelTouchRecording" />
+		</view>
 	</view>
 </template>
 
 <script setup>	import { ref } from 'vue';
 	import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app';
-
 	// 导入组件
 	import SideDrawer from '../../components/home/SideDrawer.vue';
 	import TopNavBar from '../../components/home/TopNavBar.vue';
 	import MessageList from '../../components/home/MessageList.vue';
 	import MessageInput from '../../components/home/MessageInput.vue';
-	import AudioVisualizer from '../../components/home/AudioVisualizer.vue';
-	import SpeechRecognition from '../../components/home/SpeechRecognition.vue';
 	import Introduction from '../../components/home/Introduction.vue';
 
 	// 导入可复用逻辑
@@ -95,7 +84,6 @@
 		clearResponseTimeout,
 		addLog
 	);
-
 	// 从消息服务中直接使用响应式状态
 	const {
 		messages,
@@ -104,7 +92,6 @@
 		lastMessageId,
 		isUserScrolling,
 		hasNewMessage,
-		speechRecognitionText,
 		// 移除 selectedVoice，现在使用全局设置
 		sendMessage: originalSendMessage, // 重命名原始方法
 		addMessage,
@@ -208,29 +195,32 @@
 		flex-direction: column;
 		position: relative;
 		background-color: #f5f7fa;
+		overflow: hidden;
 	}
 
 	.main-content {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		justify-content: space-between;
-		/* 均匀分布子元素 */
 		position: relative;
 		background-color: #f5f7fa;
 		width: 100%;
-		height: 100%;
 		overflow: hidden;
-		padding-bottom: 20rpx;
-		/* 增加底部内边距 */
+		padding: 0 20rpx;
+		/* 移除底部padding，因为MessageInput是fixed定位 */
 	}
 
 	/* 消息列表容器，让其占据主要空间 */
 	.message-list-container {
 		flex: 1;
-		min-height: 60vh;
-		/* 确保至少有60%的视窗高度 */
 		display: flex;
 		flex-direction: column;
+		overflow: hidden;
+		position: relative;
+		/* 确保绝对定位的子元素相对于此容器定位 */
+		min-height: 0;
+		/* 确保flex子项能收缩 */
+		margin-bottom: 220rpx;
+		/* 为底部fixed的MessageInput留出空间 */
 	}
 </style>

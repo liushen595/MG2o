@@ -1,6 +1,6 @@
 <template>
     <scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true" :scroll-into-view="lastMessageId"
-        @scroll="onScroll">
+        @scroll="onScroll" :enable-back-to-top="true" :scroll-anchoring="true">
         <view class="conversation-inner">
             <view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }"
                 :id="'msg-' + index">
@@ -64,25 +64,15 @@
 
 <style scoped>
     .conversation {
-        flex: 1;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         background-color: #fff;
         border-radius: 16rpx;
-        padding: 20rpx;
-        margin: 20rpx 0;
-        width: 94%;
-        height: calc(100vh - 250rpx);
-        /* 设置固定高度，留出顶部导航栏和底部输入框的空间 */
-        max-height: 75vh;
-        /* 增加最大高度比例 */
         box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
         border: 1rpx solid #eaeaea;
-        position: relative;
-        scrollbar-width: none;
-        /* Firefox */
-        -ms-overflow-style: none;
-        /* IE and Edge */
-        -webkit-overflow-scrolling: touch;
-        /* 保持在 iOS 上滚动的流畅性 */
     }
 
     /* 隐藏滚动条 */
@@ -95,8 +85,10 @@
     }
 
     .conversation-inner {
-        padding: 10rpx;
+        padding: 20rpx 20rpx 90rpx 20rpx;
         min-height: 100%;
+        display: flex;
+        flex-direction: column;
     }
 
     .message {

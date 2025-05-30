@@ -1,0 +1,312 @@
+/* MessageInput 组件样式文件 */
+
+.message-input-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    transition: all 0.3s ease;
+    background-color: #fff;
+    /* 确保底部不透明 */
+
+    &.keyboard-active {
+        bottom: var(--keyboard-height, 0);
+    }
+}
+
+.input-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; // 让功能区贴底
+    min-height: 220rpx; // 适当调整高度
+    background-color: #fff;
+    border-radius: 20rpx 20rpx 0 0;
+    box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.1);
+    border: 1rpx solid #e8e8e8;
+    border-bottom: none;
+    padding: 20rpx;
+    padding-bottom: calc(env(safe-area-inset-bottom, 10rpx) + 20rpx);
+    margin: 0 20rpx;
+    margin-bottom: 0;
+}
+
+/* 文本输入区域 */
+.text-input-area {
+    margin-bottom: 20rpx;
+
+    .message-input {
+        width: 100%;
+        padding: 15rpx 20rpx;
+        font-size: 32rpx;
+        border: 1rpx solid #e8e8e8;
+        border-radius: 12rpx;
+        background-color: #f9f9f9;
+        min-height: 80rpx;
+        max-height: 200rpx;
+        line-height: 1.4;
+        box-sizing: border-box;
+
+        &:focus {
+            border-color: #1890ff;
+            background-color: #fff;
+            outline: none;
+        }
+    }
+}
+
+/* 功能按键区域 */
+.function-buttons-area {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 80rpx;
+    padding: 0 10rpx;
+    box-sizing: border-box;
+}
+
+/* 左侧加号按钮 */
+.plus-btn {
+    width: 72rpx;
+    height: 72rpx;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40rpx;
+    color: #999;
+    font-weight: bold;
+    transition: all 0.3s;
+
+    &:active {
+        background-color: #e0e0e0;
+        transform: scale(0.95);
+    }
+}
+
+/* 左侧按钮区域 */
+.left-button-area {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    height: 100%;
+    width: 80rpx;
+    flex-shrink: 0;
+}
+
+/* 右侧按钮区域 */
+.right-button-area {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    height: 100%;
+    // 不要 flex: 1;
+}
+
+/* 文本按钮 (说话/发送) */
+.text-btn {
+    min-width: 100rpx;
+    max-width: 150rpx;
+    height: 72rpx;
+    border-radius: 36rpx;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    flex-shrink: 0;
+    font-size: 30rpx;
+    font-weight: 500;
+    color: white;
+    padding: 0 20rpx;
+
+    &.mic-mode {
+        background-color: #52c41a;
+
+        &:active {
+            background-color: #389e0d;
+            transform: scale(0.95);
+        }
+    }
+
+    &.send-mode {
+        background-color: #1890ff;
+
+        &:active {
+            background-color: #096dd9;
+            transform: scale(0.95);
+        }
+    }
+
+    &[disabled] {
+        background-color: #d9d9d9;
+        opacity: 0.6;
+    }
+}
+
+/* 录音准备大按钮 */
+.voice-ready-btn {
+    width: 100%;
+    height: 72rpx;
+    border-radius: 36rpx;
+    background-color: #52c41a;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    font-size: 32rpx;
+    font-weight: 500;
+    color: white;
+    margin: 0 20rpx;
+
+    &:active {
+        background-color: #389e0d;
+        transform: scale(0.98);
+    }
+
+    &.recording {
+        background-color: #ff4d4f;
+        animation: recording-pulse 1.5s infinite;
+    }
+}
+
+/* 图标样式 */
+/* 图标样式已移除，改为使用文本按钮 */
+
+/* 音频可视化区域样式 */
+.audio-visualizer-area {
+    height: 120rpx;
+    margin-bottom: 20rpx;
+    border-radius: 12rpx;
+    background-color: #f9f9f9;
+    border: 1rpx solid #e8e8e8;
+    padding: 20rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+
+    .visualizer-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 8rpx;
+        height: 80rpx;
+
+        .visualizer-bar {
+            width: 6rpx;
+            background: linear-gradient(to top, #1890ff, #52c41a);
+            border-radius: 3rpx;
+            min-height: 8rpx;
+            transition: height 0.1s ease;
+            animation: bar-pulse 0.5s ease-in-out infinite alternate;
+
+            &:nth-child(odd) {
+                animation-delay: 0.1s;
+            }
+
+            &:nth-child(even) {
+                animation-delay: 0.2s;
+            }
+        }
+    }
+
+    .cancel-tip {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(255, 77, 79, 0.9);
+        color: white;
+        padding: 15rpx 30rpx;
+        border-radius: 20rpx;
+        font-size: 24rpx;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10rpx;
+
+        .cancel-icon {
+            width: 20rpx;
+            height: 20rpx;
+            position: relative;
+
+            &::before,
+            &::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 100%;
+                height: 3rpx;
+                background-color: white;
+                border-radius: 1rpx;
+            }
+
+            &::before {
+                transform: translate(-50%, -50%) rotate(45deg);
+            }
+
+            &::after {
+                transform: translate(-50%, -50%) rotate(-45deg);
+            }
+        }
+    }
+}
+
+/* 动画效果 */
+@keyframes recording-pulse {
+    0% {
+        background-color: #ff4d4f;
+        box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.7);
+    }
+
+    50% {
+        background-color: #ff7875;
+        box-shadow: 0 0 0 20rpx rgba(255, 77, 79, 0);
+    }
+
+    100% {
+        background-color: #ff4d4f;
+        box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+    }
+}
+
+@keyframes bar-pulse {
+    from {
+        opacity: 0.6;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* 隐藏的元素 */
+.hidden {
+    display: none !important;
+}
+
+/* 过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: transform 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+    transform: translateY(100%);
+}

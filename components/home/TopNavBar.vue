@@ -42,10 +42,10 @@
         background-color: #fff;
         border-radius: 16rpx;
         margin: 20rpx 0 10rpx 0;
-        /* 调整上下边距 */
         box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
-        z-index: 10;
-        /* 确保导航栏在最上层 */
+        z-index: 200;
+        flex-shrink: 0;
+        /* 防止在flex布局中被压缩 */
     }
 
     .nav-left {

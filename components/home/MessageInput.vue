@@ -1,23 +1,60 @@
 <template>
-    <view class="message-input-container">
-        <view class="input-wrapper">
-            <input class="message-input" v-model="messageTextModel" placeholder="输入消息..." :disabled="!isConnected"
-                @confirm="sendMessage" />
-            <button class="send-btn" @click="sendMessage" :disabled="!isConnected || !messageTextModel.trim()">
-                <view class="send-icon"></view>
-            </button>
+    <view class="message-input-container" :class="{ 'keyboard-active': keyboardVisible }">
+        <view class="input-wrapper" :class="{ 'keyboard-active': keyboardVisible }">
+            <!-- 音频可视化区域 (录音时替换文本输入区域) -->
+            <view v-if="isRecording" class="audio-visualizer-area">
+                <view class="visualizer-bars">
+                    <view v-for="(height, index) in audioVisualizerData" :key="index" class="visualizer-bar"
+                        :style="{ height: height + '%' }">
+                    </view>
+                </view>
+                <view v-if="isCancelRecording" class="cancel-tip">
+                    <view class="cancel-icon"></view>
+                    <text>松开手指，取消发送</text>
+                </view>
+            </view>
+
+            <!-- 文本输入区域 -->
+            <view v-else class="text-input-area">
+                <textarea class="message-input" v-model="messageTextModel" placeholder="输入消息..."
+                    :disabled="!isConnected" auto-height maxlength="500" show-confirm-bar="false"
+                    :adjust-position="true" confirm-type="send" @confirm="sendMessage" @focus="handleInputFocus"
+                    @blur="handleInputBlur" @click="handleTextAreaClick" />
+            </view> <!-- 功能按键区域 -->
+            <view class="function-buttons-area" :class="getCurrentModeClass()">
+                <!-- 普通状态：左侧加号 + 右侧说话/发送按钮 -->
+                <template v-if="inputState === 'initial' || inputState === 'textInput'">
+                    <!-- 左侧加号 -->
+                    <view class="left-button-area">
+                        <button v-if="inputState !== 'voiceReady'" class="plus-btn" @click="handlePlusClick">
+                            <view class="plus-icon"></view>
+                            +
+                        </button>
+                    </view>
+                    <!-- 右侧说话/发送按钮 -->
+                    <view class="right-button-area">
+                        <button class="text-btn" :class="hasText ? 'send-mode' : 'mic-mode'" :disabled="!isConnected"
+                            @click="handleRightButtonClick">
+                            {{ hasText ? '发送' : '说话' }}
+                        </button>
+                    </view>
+                </template>
+
+                <!-- 录音准备状态：全宽度按钮 -->
+                <template v-else>
+                    <button class="voice-ready-btn" :class="{ recording: isRecording }" :disabled="!isConnected"
+                        @touchstart="startTouchRecording" @touchmove="touchMoveRecording" @touchend="endTouchRecording"
+                        @touchcancel="cancelTouchRecording">
+                        {{ isRecording ? '松开发送' : '按住说话' }}
+                    </button>
+                </template>
+            </view>
         </view>
-        <button class="record-btn" @touchstart="startTouchRecording" @touchmove="touchMoveRecording"
-            @touchend="endTouchRecording" @touchcancel="cancelTouchRecording" :disabled="!isConnected"
-            :class="{ recording: isRecording, 'cancel-recording': isCancelRecording }">
-            <view class="mic-icon"></view>
-            <text>{{ isRecording ? '松开发送' : '按住说话' }}</text>
-        </button>
     </view>
 </template>
 
 <script setup>
-    import { defineProps, defineEmits, computed } from 'vue';
+    import { defineProps, defineEmits, computed, ref, nextTick } from 'vue';
 
     const props = defineProps({
         messageText: {
@@ -35,6 +72,10 @@
         isCancelRecording: {
             type: Boolean,
             default: false
+        },
+        audioVisualizerData: {
+            type: Array,
+            default: () => Array(12).fill(20)
         }
     });
 
@@ -47,197 +88,131 @@
         'touchCancel'
     ]);
 
+    // 输入状态：'initial', 'textInput', 'voiceReady'
+    const inputState = ref('initial');
+    const keyboardVisible = ref(false);
+
     const messageTextModel = computed({
         get: () => props.messageText,
         set: (value) => emit('update:messageText', value)
     });
 
+    // 是否有文本内容
+    const hasText = computed(() => {
+        return messageTextModel.value && messageTextModel.value.trim().length > 0;
+    });
+
+    // 获取当前模式的CSS类
+    function getCurrentModeClass() {
+        switch (inputState.value) {
+            case 'initial':
+                return 'initial-state';
+            case 'textInput':
+                return 'initial-state';
+            case 'voiceReady':
+                return 'voice-ready-state';
+            default:
+                return 'initial-state';
+        }
+    }
+
+    // 处理文本区域点击
+    function handleTextAreaClick() {
+        if (inputState.value === 'voiceReady') {
+            inputState.value = 'initial';
+        }
+    }    // 处理输入框获得焦点
+    function handleInputFocus() {
+        keyboardVisible.value = true;
+        // 获取键盘高度并设置CSS变量
+        uni.onKeyboardHeightChange(res => {
+            if (res.height > 0) {
+                const heightInPx = res.height + 'px';
+                document.documentElement.style.setProperty('--keyboard-height', heightInPx);
+            } else {
+                document.documentElement.style.setProperty('--keyboard-height', '0px');
+            }
+        });
+
+        if (inputState.value === 'initial' || inputState.value === 'voiceReady') {
+            inputState.value = 'textInput';
+        }
+    }
+
+    // 处理输入框失去焦点
+    function handleInputBlur() {
+        keyboardVisible.value = false;
+        document.documentElement.style.setProperty('--keyboard-height', '0px');
+
+        if (inputState.value === 'textInput' && !hasText.value) {
+            inputState.value = 'initial';
+        }
+    }
+
+    // 处理加号按钮点击
+    function handlePlusClick() {
+        // 预留功能，暂时无操作
+        console.log('加号按钮已按下, 但目前相关功能还未开发');
+    }    // 处理右侧按钮点击（麦克风/发送按钮）
+    function handleRightButtonClick() {
+        if (hasText.value) {
+            // 发送消息
+            sendMessage();
+        } else {
+            // 切换到录音模式
+            if (keyboardVisible.value) {
+                // 如果键盘是弹出状态，先收起键盘
+                hideKeyboard();
+                // 延迟切换到录音模式，确保键盘完全收起
+                setTimeout(() => {
+                    inputState.value = 'voiceReady';
+                }, 100);
+            } else {
+                inputState.value = 'voiceReady';
+            }
+        }
+    }
+
+    // 隐藏键盘
+    function hideKeyboard() {
+        uni.hideKeyboard();
+        keyboardVisible.value = false;
+    }
+
+    // 发送消息
     function sendMessage() {
         if (!messageTextModel.value.trim() || !props.isConnected) return;
         emit('send');
+        // 发送后重置状态
+        if (!keyboardVisible.value) {
+            inputState.value = 'initial';
+        }
     }
 
+    // 录音相关事件处理
     function startTouchRecording(e) {
         emit('touchStart', e);
     }
 
     function touchMoveRecording(e) {
         emit('touchMove', e);
-    }
-
-    function endTouchRecording() {
+    } function endTouchRecording() {
         emit('touchEnd');
+        // 录音结束后始终重置为初始状态
+        setTimeout(() => {
+            inputState.value = 'initial';
+        }, 300); // 短暂延迟，让录音动画完成
     }
 
     function cancelTouchRecording() {
         emit('touchCancel');
+        // 取消录音后始终重置为初始状态
+        setTimeout(() => {
+            inputState.value = 'initial';
+        }, 300); // 短暂延迟，让录音动画完成
     }
 </script>
 
-<style scoped>
-    .message-input-container {
-        display: flex;
-        gap: 16rpx;
-        margin: 10rpx 0 30rpx 0;
-        /* 上右下左边距，增加了上边距和下边距 */
-        padding: 0 15rpx;
-        /* 增加左右内边距 */
-    }
-
-    .input-wrapper {
-        flex: 1;
-        position: relative;
-        display: flex;
-        align-items: center;
-        background-color: #fff;
-        border-radius: 12rpx;
-        padding: 0 5rpx 0 20rpx;
-        box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.07);
-        border: 1rpx solid #e8e8e8;
-    }
-
-    .message-input {
-        flex: 1;
-        padding: 15rpx 0;
-        font-size: 28rpx;
-        border: none;
-        background-color: transparent;
-    }
-
-    .send-btn {
-        width: 68rpx;
-        height: 68rpx;
-        border-radius: 35rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #1890ff;
-        transition: all 0.3s;
-        border: none;
-        padding: 0;
-        margin: 3rpx;
-    }
-
-    .send-btn:active {
-        transform: scale(0.95);
-        background-color: #096dd9;
-    }
-
-    .send-btn[disabled] {
-        background-color: #c2c1c1;
-        opacity: 0.5;
-    }
-
-    .send-icon {
-        width: 0;
-        height: 0;
-        border-top: 10rpx solid transparent;
-        border-bottom: 10rpx solid transparent;
-        border-left: 16rpx solid white;
-        margin-left: 5rpx;
-    }
-
-    /* 录音按钮样式 */
-    .record-btn {
-        min-width: 220rpx;
-        height: 74rpx;
-        border-radius: 12rpx;
-        background-color: #52c41a;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 20rpx;
-        gap: 10rpx;
-        box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.07);
-        border: 1rpx solid #e8e8e8;
-        font-size: 28rpx;
-        transition: all 0.3s;
-    }
-
-    .record-btn:active {
-        background-color: #389e0d;
-        transform: scale(0.98);
-    }
-
-    .record-btn[disabled] {
-        background-color: #f5f5f5;
-        color: #bbb;
-        opacity: 0.5;
-    }
-
-    .record-btn.recording {
-        background-color: #ff4d4f;
-        animation: pulse 1.5s infinite;
-    }
-
-    .record-btn.cancel-recording {
-        background-color: #ff7875;
-    }
-
-    .mic-icon {
-        width: 32rpx;
-        height: 32rpx;
-        border-radius: 50%;
-        background-color: white;
-        position: relative;
-    }
-
-    .mic-icon::before {
-        content: '';
-        position: absolute;
-        width: 16rpx;
-        height: 16rpx;
-        background-color: currentColor;
-        border-radius: 50%;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-    }
-
-    .mic-icon::after {
-        content: '';
-        position: absolute;
-        width: 10rpx;
-        height: 10rpx;
-        border: 2rpx solid currentColor;
-        border-radius: 50%;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        animation: ripple 1.5s infinite;
-        opacity: 0;
-    }
-
-    .recording .mic-icon::after {
-        opacity: 1;
-    }
-
-    @keyframes pulse {
-        0% {
-            background-color: #ff4d4f;
-        }
-
-        50% {
-            background-color: #ff7875;
-        }
-
-        100% {
-            background-color: #ff4d4f;
-        }
-    }
-
-    @keyframes ripple {
-        0% {
-            width: 0;
-            height: 0;
-            opacity: 1;
-        }
-
-        100% {
-            width: 24rpx;
-            height: 24rpx;
-            opacity: 0;
-        }
-    }
+<style lang="scss" scoped>
+    @import './MessageInput.scss';
 </style>

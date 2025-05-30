@@ -61,7 +61,7 @@
         width: 100%;
         height: 100%;
         background-color: rgba(0, 0, 0, 0.5);
-        z-index: 998;
+        z-index: 400;
         opacity: 0;
         visibility: hidden;
         transition: all 0.3s ease;
@@ -79,7 +79,7 @@
         width: 600rpx;
         height: 100%;
         background-color: #fff;
-        z-index: 999;
+        z-index: 401;
         transition: left 0.3s ease;
         box-shadow: 2rpx 0 8rpx rgba(0, 0, 0, 0.1);
     }
