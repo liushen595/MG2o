@@ -204,7 +204,7 @@
 		flex-direction: column;
 		position: relative;
 		background-color: #f5f7fa;
-		width: 100%;
+		width: 95%;
 		overflow: hidden;
 		padding: 0 20rpx;
 		/* 移除底部padding，因为MessageInput是fixed定位 */
