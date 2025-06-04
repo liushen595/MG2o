@@ -17,7 +17,11 @@
 			<view class="message-list-container">
 				<MessageList :messages="messages" :lastMessageId="lastMessageId" :isLoading="isLoading"
 					:isUserScrolling="isUserScrolling" :hasNewMessage="hasNewMessage" @scroll="onScroll"
-					@scrollToBottom="scrollToBottom" />
+					@scrollToBottom="scrollToBottom"
+					:followUpQuestions="followUpQuestions"
+					:showFollowUp="showFollowUp"
+					@send-follow-up="sendFollowUpQuestion"
+					@toggle-follow-up="toggleFollowUp" />
 			</view>
 
 			<!-- 消息输入部分 -->
@@ -37,6 +41,7 @@
 	import MessageList from '../../components/home/MessageList.vue';
 	import MessageInput from '../../components/home/MessageInput.vue';
 	import Introduction from '../../components/home/Introduction.vue';
+	import FollowUp from '../../components/home/FollowUpQuestions.vue';
 
 	// 导入可复用逻辑
 	import useLogger from '../../composables/home/useLogger.js';
@@ -98,7 +103,11 @@
 		onScroll,
 		scrollToBottom,
 		loadSettings,
-		cleanupResources: cleanupMessagesResources
+		cleanupResources: cleanupMessagesResources,
+		followUpQuestions,
+		showFollowUp,
+		sendFollowUpQuestion,
+		toggleFollowUp
 	} = messageService;
 	const sendMessage = () => {
 		hide(); // 隐藏引言

@@ -5,7 +5,7 @@ export default function useIntroduction() {
   // props的响应式状态
   const state = ref({
     showIntroduction: true,
-    introductionText: "您好,我是苏州大学博物馆导航助手,请问有什么是我可以帮你的"
+    introductionText: "您好,我是苏州大学博物馆导航助手,请问有什么是我可以帮你的",
   })
   // 组件功能的基础方法
   const show = (customText) => {
@@ -17,6 +17,7 @@ export default function useIntroduction() {
 
   const hide = () => {
     state.value.showIntroduction = false
+    state.value.showBackground = false  // 同时关闭背景
   }
   return {
     // 直接对应组件需要的props
