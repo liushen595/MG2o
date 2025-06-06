@@ -6,13 +6,9 @@
                 :id="'msg-' + index">
                 <text>{{ msg.text }}</text>
             </view>
-            <FollowUp 
-                v-if="followUpQuestions.length > 0"class="follow-up-wrapper"
-                :follow-up-questions="followUpQuestions"
-                :show-follow-up="showFollowUp"
-                @send-follow-up="$emit('send-follow-up', $event)"
-                @toggle-follow-up="$emit('toggle-follow-up')"
-            />
+            <FollowUp v-if="followUpQuestions.length > 0" class="follow-up-wrapper"
+                :follow-up-questions="followUpQuestions" :show-follow-up="showFollowUp"
+                @send-follow-up="$emit('send-follow-up', $event)" @toggle-follow-up="$emit('toggle-follow-up')" />
             <!-- 加载动画 -->
             <view v-if="isLoading" class="loading-container">
                 <view class="loading-dots">
@@ -34,6 +30,7 @@
 <script setup>
     import { defineProps, defineEmits } from 'vue';
     import FollowUp from "../home/FollowUpQuestions.vue";
+
     defineProps({
         messages: {
             type: Array,
@@ -78,13 +75,14 @@
 
 <style scoped>
     .follow-up-wrapper {
-            position: sticky;
-            bottom: 20rpx;
-            z-index: 2;
-            background: linear-gradient(to bottom, transparent 0%, white 30%);
-            padding-top: 40rpx;
-            margin-top: -20rpx;
+        position: sticky;
+        bottom: 20rpx;
+        z-index: 2;
+        background: linear-gradient(to bottom, transparent 0%, white 30%);
+        padding-top: 40rpx;
+        margin-top: -20rpx;
     }
+
     .conversation {
         position: absolute;
         top: 0;
@@ -95,7 +93,8 @@
         border-radius: 16rpx;
         box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
         border: 1rpx solid #eaeaea;
-        padding-bottom: 0 !important; /* 移除滚动条的padding */
+        padding-bottom: 0 !important;
+        /* 移除滚动条的padding */
     }
 
     /* 隐藏滚动条 */

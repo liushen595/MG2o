@@ -20,20 +20,20 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
     function sendFollowUpQuestion(question) {
         // 添加到消息列表
         addMessage(question, true);
-        
+
         // 显示加载动画
         isLoading.value = true;
-        
+
         // 设置响应超时计时器
         startResponseTimeout();
-        
+
         // 发送到服务器，使用全局设置中的音色
         xiaozhiService.sendTextMessage(question, settings.selectedVoice).catch(error => {
             addLog(`发送失败: ${error}`, 'error');
             isLoading.value = false;
             clearResponseTimeout();
         });
-        
+
         // 清空追问问题
         followUpQuestions.value = [];
         showFollowUp.value = false;
@@ -48,6 +48,10 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
 
         // 添加到消息列表
         addMessage(message, true);
+
+        // 清空追问问题
+        followUpQuestions.value = [];
+        showFollowUp.value = false;
 
         // 显示加载动画
         isLoading.value = true;
@@ -74,10 +78,10 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
             text,
             isUser
         });
-         // 如果是用户消息，自动展开追问
-            if(isUser) {
-                showFollowUp.value = true;
-            }
+        // 如果是用户消息，自动展开追问
+        if (isUser) {
+            showFollowUp.value = true;
+        }
         // 只有在用户没有手动滚动的情况下才自动滚动到底部
         nextTick(() => {
             if (!isUserScrolling.value) {
@@ -136,11 +140,11 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
                 const lastIndex = messages.value.length - 1;
                 lastMessageId.value = 'msg-' + lastIndex;
                 setTimeout(() => {
-                uni.pageScrollTo({
-                    scrollTop: 9999999,
-                    duration: 300
-                });
-            }, 100);
+                    uni.pageScrollTo({
+                        scrollTop: 9999999,
+                        duration: 300
+                    });
+                }, 100);
             }
         });
     }    // 处理语音识别结果
@@ -151,6 +155,10 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
 
         // 直接添加到消息列表，作为用户消息显示在右侧
         addMessage(text, true);
+
+        // 此处也应该隐藏追问
+        followUpQuestions.value = [];
+        showFollowUp.value = false;
     }
 
     // 处理服务器消息
@@ -197,32 +205,32 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         } else if (message.type === 'follow_up_questions') {
             // 追问问题处理
             addLog(`收到追问问题: ${message.questions}`, 'info');
-            
+
             // 解析追问问题（支持换行符和问号分隔）
-                let questions = [];
-                if (message.questions) {
-                    if (Array.isArray(message.questions)) {
-                        questions = message.questions;
-                    } else {
-                        // 尝试用换行符分割
-                        questions = message.questions.split('$');
-                        // 如果分割后只有1个元素，尝试用问号分割
-                        if (questions.length === 1) {
-                            questions = message.questions.split('?').filter(q => q.trim());
-                            // 给每个问题添加问号
-                            questions = questions.map(q => q.trim() + '?');
-                        }
+            let questions = [];
+            if (message.questions) {
+                if (Array.isArray(message.questions)) {
+                    questions = message.questions;
+                } else {
+                    // 尝试用换行符分割
+                    questions = message.questions.split('$');
+                    // 如果分割后只有1个元素，尝试用问号分割
+                    if (questions.length === 1) {
+                        questions = message.questions.split('?').filter(q => q.trim());
+                        // 给每个问题添加问号
+                        questions = questions.map(q => q.trim() + '?');
                     }
                 }
-            
-                // 存储追问问题
-                followUpQuestions.value = questions;
-                // 默认显示追问区域
-                showFollowUp.value = true;
-                
-                // 确保隐藏加载动画
-                isLoading.value = false;
-        }else {
+            }
+
+            // 存储追问问题
+            followUpQuestions.value = questions;
+            // 默认显示追问区域
+            showFollowUp.value = true;
+
+            // 确保隐藏加载动画
+            isLoading.value = false;
+        } else {
             // 未知消息类型
             addLog(`未知消息类型: ${message.type}`, 'info');
             // 确保隐藏加载动画
