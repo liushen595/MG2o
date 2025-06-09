@@ -240,24 +240,48 @@ const sendTextMessage = (message, voiceId = 1) => {
       return;
     }
 
-    try {
+    try {      // 获取最新的全局设置实例
+      const currentGlobalSettings = useGlobalSettings();
+
       // 使用全局音色映射
       const selectedVoice = voiceMap[voiceId];
+
+      // 获取当前地区和语言设置
+      const currentRegion = currentGlobalSettings.getCurrentRegion();
+      const currentLanguageCode = currentGlobalSettings.getCurrentLanguageCode();
+
+
+      // 构建附加提示文本
+      let additionalPrompt = '';
+      if (currentRegion && currentRegion.trim() !== '') {
+        additionalPrompt += `请结合${currentRegion}的历史和文化`;
+      }
+      if (currentLanguageCode && currentLanguageCode !== 'zh-CN') {
+        if (additionalPrompt) {
+          additionalPrompt += `，忽略我提问时使用的语言，请一定使用${currentLanguageCode}对应的语言来回答`;
+        } else {
+          additionalPrompt += `忽略我提问时使用的语言，请一定使用${currentLanguageCode}对应的语言来回答`;
+        }
+      }
+      if (additionalPrompt) {
+        additionalPrompt += '。';
+      }
 
       // 直接发送listen消息
       const listenMessage = {
         type: 'listen',
         mode: 'manual',
         state: 'detect',
-        text: message,
+        text: message + (additionalPrompt ? ' ' + additionalPrompt : ''),
         voice: selectedVoice // 使用全局状态管理中的音色
       };
 
       console.log('发送文本消息，使用音色:', selectedVoice);
+      console.log('完整消息内容:', listenMessage.text);
       websocket.send({
         data: JSON.stringify(listenMessage),
         success: () => {
-          console.log('文本消息发送成功');
+          console.log('文本消息发送成功：' + message);
           resolve(true);
         },
         fail: (err) => {
@@ -551,14 +575,42 @@ const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
     if (!websocket || !isConnected) {
       reject('WebSocket未连接');
       return;
-    }
-
-    console.log('准备发送音频文件:', filePath);
+    } console.log('准备发送音频文件:', filePath);    // 获取最新的全局设置实例
+    const currentGlobalSettings = useGlobalSettings();
 
     // 使用全局音色映射
     const selectedVoice = voiceMap[voiceId];
     currentVoice = selectedVoice;
     console.log('当前音色设置为:', currentVoice);
+
+    // 获取当前地区和语言设置
+    const currentRegion = currentGlobalSettings.getCurrentRegion();
+    const currentLanguageCode = currentGlobalSettings.getCurrentLanguageCode();
+
+    // 调试信息 - sendAudioFile
+    console.log('=== sendAudioFile 调试信息 ===');
+    console.log('currentGlobalSettings:', currentGlobalSettings);
+    console.log('getCurrentRegion 类型:', typeof currentGlobalSettings.getCurrentRegion);
+    console.log('getCurrentLanguageCode 类型:', typeof currentGlobalSettings.getCurrentLanguageCode);
+    console.log('currentRegion:', currentRegion);
+    console.log('currentLanguageCode:', currentLanguageCode);
+    console.log('currentLanguageCode 类型:', typeof currentLanguageCode);
+
+    // 构建附加提示文本
+    let additionalPrompt = '';
+    if (currentRegion && currentRegion.trim() !== '') {
+      additionalPrompt += `请结合${currentRegion}的历史和文化`;
+    }
+    if (currentLanguageCode && currentLanguageCode !== 'zh-CN') {
+      if (additionalPrompt) {
+        additionalPrompt += `，忽略我提问时使用的语言，请一定使用${currentLanguageCode}对应的语言来回答`;
+      } else {
+        additionalPrompt += `忽略我提问时使用的语言，请一定使用${currentLanguageCode}对应的语言来回答`;
+      }
+    }
+    if (additionalPrompt) {
+      additionalPrompt += '。';
+    }
 
     try {
       // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
@@ -567,7 +619,8 @@ const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
         mode: 'manual',
         state: 'start',
         format: 'mp3',
-        voice: selectedVoice // 使用全局状态管理中的音色
+        voice: selectedVoice, // 使用全局状态管理中的音色
+        address: additionalPrompt
       };
       // 使用JSON.stringify()序列化消息
       const startData = JSON.stringify(listenStartMessage);
