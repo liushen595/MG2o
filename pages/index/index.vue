@@ -28,7 +28,9 @@
 			<MessageInput v-model:messageText="messageText" :isConnected="isConnected" :isRecording="isRecording"
 				:isCancelRecording="isCancelRecording" :audioVisualizerData="audioVisualizerData" @send="sendMessage"
 				@touchStart="startTouchRecording" @touchMove="touchMoveRecording" @touchEnd="endTouchRecording"
-				@touchCancel="cancelTouchRecording" />
+				@touchCancel="cancelTouchRecording" 
+				@image-sent="handleImageMessage"
+				/>
 		</view>
 	</view>
 </template>
@@ -126,7 +128,10 @@
 		clearResponseTimeout,
 		addLog
 	);
-
+	const handleImageMessage = (imageData) => {
+		 hide(); // 隐藏引言
+    	 messageService.handleImageMessage(imageData);
+	};
 	// 从音频服务中直接使用响应式状态
 	const {
 		isRecording,

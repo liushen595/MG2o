@@ -26,6 +26,9 @@
                 <template v-if="inputState === 'initial' || inputState === 'textInput'">
                     <!-- 左侧加号 -->
                     <view class="left-button-area">
+                        <button class="camera-btn" @click="handleCameraClick">
+                            <image class="camera-icon" src="../icons/相册.jpg" mode="aspectFit" />
+                        </button>
                         <button v-if="inputState !== 'voiceReady'" class="plus-btn" @click="handlePlusClick">
                             <view class="plus-icon"></view>
                             +
@@ -55,7 +58,7 @@
 
 <script setup>
     import { defineProps, defineEmits, computed, ref, nextTick } from 'vue';
-
+    import imageService from '../../utils/image-service.js';
     const props = defineProps({
         messageText: {
             type: String,
@@ -101,7 +104,51 @@
     const hasText = computed(() => {
         return messageTextModel.value && messageTextModel.value.trim().length > 0;
     });
-
+    function handleCameraClick() {
+                uni.chooseImage({
+            count: 1,
+            sourceType: ['album'],
+            success: async (res) => {
+                const tempFilePath = res.tempFilePaths[0];
+                
+                // 显示加载提示
+                uni.showLoading({
+                    title: '图片处理中...'
+                });
+                
+                try {
+                    const result = await imageService.uniProcessImage(tempFilePath);
+                    
+                    // 隐藏加载提示
+                    uni.hideLoading();
+                    
+                    // 触发图片消息事件，传递完整的图片信息
+                    emit('image-sent', {
+                        type: 'image',
+                        url: result.filename,
+                        description: result.description,
+                        localPath: tempFilePath, // 保留本地预览路径
+                        mimeType: result.mimeType,
+                        model: result.model
+                    });
+                    
+                } catch (error) {
+                    uni.hideLoading();
+                    uni.showToast({
+                        title: error.message || '图片上传失败',
+                        icon: 'none'
+                    });
+                }
+            },
+            fail: (err) => {
+                console.error('选择图片失败:', err);
+                uni.showToast({
+                    title: '选择图片失败',
+                    icon: 'none'
+                });
+            }
+        });
+    }
     // 获取当前模式的CSS类
     function getCurrentModeClass() {
         switch (inputState.value) {

@@ -1,24 +1,58 @@
 <template>
-    <scroll-view class="conversation" scroll-y="true" :scroll-with-animation="true" :scroll-into-view="lastMessageId"
-        @scroll="onScroll" :enable-back-to-top="true" :scroll-anchoring="true">
+    <scroll-view 
+        class="conversation" 
+        scroll-y="true" 
+        :scroll-with-animation="true" 
+        :scroll-into-view="lastMessageId"
+        :enhanced="true"
+        :enable-back-to-top="true" 
+        :scroll-anchoring="true"
+        @scroll="onScroll"
+        @scrolltolower="handleScrollToLower"
+    >
         <view class="conversation-inner">
-            <view v-for="(msg, index) in messages" :key="index" class="message" :class="{ user: msg.isUser }"
+            <view v-for="(msg, index) in messages" :key="msg.id || index" class="message" :class="{ user: msg.isUser }"
                 :id="'msg-' + index">
-                <text>{{ msg.text }}</text>
+                <!-- 消息内容保持不变 -->
+                <template v-if="msg.isUser">
+                    <text v-if="msg.type === 'text' || !msg.type">{{ msg.text || msg.content }}</text>
+                    <view v-else-if="msg.type === 'image'" class="image-message-content">
+                        <image 
+                            :src="msg.localPath || msg.imageUrl" 
+                            mode="widthFix"
+                            class="message-image"
+                            @click="previewImage(msg)"
+                            @error="handleImageError(msg, index)"
+                        />
+                    </view>
+                </template>
+                <template v-else>
+                    <text>{{ msg.text || msg.content }}</text>
+                </template>
             </view>
-            <FollowUp v-if="followUpQuestions.length > 0" class="follow-up-wrapper"
-                :follow-up-questions="followUpQuestions" :show-follow-up="showFollowUp"
-                @send-follow-up="$emit('send-follow-up', $event)" @toggle-follow-up="$emit('toggle-follow-up')" />
+            
+            <FollowUp 
+                v-if="followUpQuestions.length > 0" 
+                class="follow-up-wrapper"
+                :follow-up-questions="followUpQuestions" 
+                :show-follow-up="showFollowUp"
+                @send-follow-up="$emit('send-follow-up', $event)" 
+                @toggle-follow-up="$emit('toggle-follow-up')" 
+            />
+            
             <!-- 加载动画 -->
-            <view v-if="isLoading" class="loading-container">
+            <view v-if="isLoading" class="loading-container" id="loading-indicator">
                 <view class="loading-dots">
                     <view class="dot dot1"></view>
                     <view class="dot dot2"></view>
                     <view class="dot dot3"></view>
                 </view>
             </view>
+            
+            <!-- 底部占位符，确保内容不被输入框遮挡 -->
+            <view class="bottom-placeholder" id="bottom-anchor"></view>
         </view>
-
+        
         <!-- 新消息提示 -->
         <view v-if="isUserScrolling && hasNewMessage" class="new-message-tip" @click="scrollToBottom">
             <text>有新消息</text>
@@ -27,22 +61,26 @@
     </scroll-view>
 </template>
 
-<script setup>
-    import { defineProps, defineEmits } from 'vue';
-    import FollowUp from "../home/FollowUpQuestions.vue";
+<script>
+import FollowUp from './FollowUpQuestions';
 
-    defineProps({
+export default {
+    name: 'MessageList',
+    components: {
+        FollowUp
+    },
+    props: {
         messages: {
             type: Array,
             default: () => []
         },
-        lastMessageId: {
-            type: String,
-            default: ''
-        },
         isLoading: {
             type: Boolean,
             default: false
+        },
+        lastMessageId: {
+            type: String,
+            default: ''
         },
         isUserScrolling: {
             type: Boolean,
@@ -60,236 +98,180 @@
             type: Boolean,
             default: false
         }
-    });
-
-    const emit = defineEmits(['scroll', 'scrollToBottom']);
-
-    function onScroll(e) {
-        emit('scroll', e);
+    },
+    emits: ['scroll', 'scroll-to-bottom', 'send-follow-up', 'toggle-follow-up'],
+    methods: {
+        onScroll(e) {
+            this.$emit('scroll', e);
+        },
+        scrollToBottom() {
+            this.$emit('scroll-to-bottom');
+        },
+        // 新增：处理滚动到底部事件
+        handleScrollToLower() {
+            // 当滚动到底部时，重置用户滚动状态
+            this.$emit('scroll-to-bottom');
+        },
+        previewImage(msg) {
+            uni.previewImage({
+                urls: [msg.localPath || msg.imageUrl],
+                current: 0
+            });
+        },
+        handleImageError(msg, index) {
+            console.error(`图片加载失败: ${msg.imageUrl || msg.localPath}`);
+            uni.showToast({
+                title: '图片加载失败',
+                icon: 'none'
+            });
+        }
     }
-
-    function scrollToBottom() {
-        emit('scrollToBottom');
-    }
+};
 </script>
 
 <style scoped>
-    .follow-up-wrapper {
-        position: sticky;
-        bottom: 20rpx;
-        z-index: 2;
-        background: linear-gradient(to bottom, transparent 0%, white 30%);
-        padding-top: 40rpx;
-        margin-top: -20rpx;
-    }
-
     .conversation {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #fff;
-        border-radius: 16rpx;
-        box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
-        border: 1rpx solid #eaeaea;
-        padding-bottom: 0 !important;
-        /* 移除滚动条的padding */
-    }
-
-    /* 隐藏滚动条 */
-    .conversation ::-webkit-scrollbar {
-        display: none;
-        width: 0 !important;
-        height: 0 !important;
-        -webkit-appearance: none;
-        background: transparent;
-        padding-bottom: 240rpx;
+        flex: 1;
+        background-color: #f5f5f5;
+        width: 100%;
+        display: flex;
+        overflow: hidden; /* 修改：确保滚动正常工作 */
     }
 
     .conversation-inner {
-        padding: 20rpx 20rpx 240rpx 20rpx;
-        min-height: 100%;
-        display: flex;
-        flex-direction: column;
+        padding: 20rpx;
+        flex: 1;
+        min-height: 100%; /* 确保内容至少占满容器高度 */
     }
 
+    /* 新增：底部占位符，确保最后的内容不被输入框遮挡 */
+    .bottom-placeholder {
+        height: 40rpx; /* 调整这个值来控制底部间距 */
+        width: 100%;
+    }
+
+    /* 其他样式保持不变 */
     .message {
-        max-width: 85%;
-        padding: 18rpx 24rpx;
-        border-radius: 18rpx;
-        margin-bottom: 24rpx;
-        word-break: break-word;
-        position: relative;
-        line-height: 1.5;
-        font-size: 28rpx;
-        box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
-        animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10rpx);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        margin-bottom: 30rpx;
+        display: flex;
+        align-items: flex-start;
     }
 
     .message.user {
-        background-color: #e3f2fd;
-        margin-left: auto;
-        text-align: right;
-        border-bottom-right-radius: 4rpx;
-        color: #0d47a1;
+        justify-content: flex-end;
     }
 
-    .message:not(.user) {
-        background-color: #f5f5f5;
-        margin-right: auto;
-        border-bottom-left-radius: 4rpx;
+    .message.user text,
+    .message.user .image-message-content {
+        background-color: #007AFF;
+        color: white;
+        padding: 20rpx 25rpx;
+        border-radius: 35rpx;
+        max-width: 70%;
+        word-wrap: break-word;
+        text-align: left;
+    }
+
+    .message:not(.user) text {
+        background-color: white;
         color: #333;
+        padding: 20rpx 25rpx;
+        border-radius: 35rpx;
+        max-width: 70%;
+        word-wrap: break-word;
+        border: 1px solid #e0e0e0;
     }
 
-    .message.user::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        right: -10rpx;
-        width: 0;
-        height: 0;
-        border-left: 10rpx solid transparent;
-        border-right: 10rpx solid transparent;
-        border-bottom: 15rpx solid #e3f2fd;
-        transform: rotate(0deg);
-    }
-
-    .message:not(.user)::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: -10rpx;
-        width: 0;
-        height: 0;
-        border-left: 10rpx solid transparent;
-        border-right: 10rpx solid transparent;
-        border-bottom: 15rpx solid #f5f5f5;
-        transform: rotate(0deg);
-    }
-
-    /* 加载动画容器 */
-    .loading-container {
-        margin-right: auto;
-        margin-bottom: 24rpx;
-        padding: 16rpx 48rpx 16rpx 24rpx;
-        left: -10rpx;
-        background-color: #f5f5f5;
-        border-radius: 16rpx;
+    .image-message-content {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        height: auto;
-        min-height: 60rpx;
-        animation: fadeIn 0.3s ease;
-        box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+        background-color: #007AFF !important;
+        padding: 15rpx !important;
+        border-radius: 20rpx !important;
     }
 
-    /* 加载点容器 */
+    .message-image {
+        max-width: 100%;
+        max-height: 400rpx;
+        border-radius: 15rpx;
+        margin-bottom: 0;
+    }
+
+    .follow-up-wrapper {
+        margin-top: 20rpx;
+    }
+
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 30rpx 0;
+    }
+
     .loading-dots {
         display: flex;
         align-items: center;
-        gap: 10rpx;
+        gap: 8rpx;
     }
 
-    /* 单个点样式 */
     .dot {
         width: 12rpx;
         height: 12rpx;
         border-radius: 50%;
-        background-color: #1890ff;
-        opacity: 0.6;
-    }
-
-    /* 三个点的动画延迟 */
-    .dot1 {
-        animation: bounce 1.4s infinite ease-in-out;
+        background-color: #666;
+        animation: loading 1.5s infinite ease-in-out;
     }
 
     .dot2 {
-        animation: bounce 1.4s infinite ease-in-out 0.2s;
+        animation-delay: 0.3s;
     }
 
     .dot3 {
-        animation: bounce 1.4s infinite ease-in-out 0.4s;
+        animation-delay: 0.6s;
     }
 
-    /* 弹跳效果动画 */
-    @keyframes bounce {
-
-        0%,
-        100% {
-            transform: translateY(0);
+    @keyframes loading {
+        0%, 80%, 100% {
+            transform: scale(0.8);
+            opacity: 0.5;
         }
-
-        50% {
-            transform: translateY(-10rpx);
+        40% {
+            transform: scale(1);
+            opacity: 1;
         }
     }
 
-    /* 新消息提示 */
     .new-message-tip {
-        position: absolute;
-        bottom: 20rpx;
-        right: 20rpx;
-        background-color: #1890ff;
+        position: fixed;
+        bottom: 200rpx;
+        right: 30rpx;
+        background-color: #007AFF;
         color: white;
-        padding: 12rpx 20rpx;
-        border-radius: 25rpx;
-        font-size: 26rpx;
+        padding: 15rpx 25rpx;
+        border-radius: 50rpx;
         display: flex;
         align-items: center;
-        gap: 8rpx;
-        box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.3);
-        z-index: 10;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        animation: newMessagePulse 2s infinite;
-    }
-
-    .new-message-tip:active {
-        transform: scale(0.95);
-        background-color: #096dd9;
+        gap: 10rpx;
+        font-size: 28rpx;
+        box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.3);
+        z-index: 100;
     }
 
     .arrow-down {
-        font-size: 20rpx;
-        font-weight: bold;
-        animation: arrowBounce 1s infinite;
+        font-size: 24rpx;
+        animation: bounce 1s infinite;
     }
 
-    @keyframes newMessagePulse {
-
-        0%,
-        100% {
-            box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.3);
-        }
-
-        50% {
-            box-shadow: 0 6rpx 20rpx rgba(24, 144, 255, 0.5);
-        }
-    }
-
-    @keyframes arrowBounce {
-
-        0%,
-        100% {
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
             transform: translateY(0);
         }
-
-        50% {
-            transform: translateY(3rpx);
+        40% {
+            transform: translateY(-5rpx);
+        }
+        60% {
+            transform: translateY(-3rpx);
         }
     }
 </style>

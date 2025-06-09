@@ -1,6 +1,8 @@
+// useMessages.js
 import { ref, nextTick } from 'vue';
 import xiaozhiService from '../../utils/xiaozhi-service.js';
 import useGlobalSettings from '../useGlobalSettings.js';
+import imageService from '../../utils/image-service.js';
 
 export default function useMessages(isConnected, startResponseTimeout, clearResponseTimeout, addLog) {
     const messages = ref([]);
@@ -13,9 +15,14 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
     const scrollTimeout = ref(null);
     const lastScrollTop = ref(0);
     const hasNewMessage = ref(false);
+    
     // 追问相关状态
     const followUpQuestions = ref([]);
     const showFollowUp = ref(false);
+    
+    // 使用全局设置管理音色选择
+    const { settings, getCurrentVoiceCode } = useGlobalSettings();
+
     // 发送追问问题
     function sendFollowUpQuestion(question) {
         // 添加到消息列表
@@ -26,8 +33,7 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
 
         // 设置响应超时计时器
         startResponseTimeout();
-
-        // 发送到服务器，使用全局设置中的音色
+        
         xiaozhiService.sendTextMessage(question, settings.selectedVoice).catch(error => {
             addLog(`发送失败: ${error}`, 'error');
             isLoading.value = false;
@@ -38,8 +44,8 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         followUpQuestions.value = [];
         showFollowUp.value = false;
     }
-    // 使用全局设置管理音色选择
-    const { settings, getCurrentVoiceCode } = useGlobalSettings();    // 发送消息
+
+    // 发送消息
     function sendMessage() {
         if (!messageText.value.trim() || !isConnected.value) return;
 
@@ -52,61 +58,104 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         // 清空追问问题
         followUpQuestions.value = [];
         showFollowUp.value = false;
-
-        // 显示加载动画
         isLoading.value = true;
-
-        // 设置响应超时计时器
         startResponseTimeout();
 
-        // 发送到服务器，使用全局设置中的音色
         xiaozhiService.sendTextMessage(message, settings.selectedVoice).catch(error => {
             addLog(`发送失败: ${error}`, 'error');
-            // 发送失败时隐藏加载动画
             isLoading.value = false;
-            // 清除响应超时计时器
             clearResponseTimeout();
         });
 
-        // 清空输入框
         messageText.value = '';
     }
 
     // 添加消息到会话记录
-    function addMessage(text, isUser = false) {
-        messages.value.push({
-            text,
-            isUser
-        });
+    function addMessage(content, isUser = false, type = "text") {
+        const messageIndex = messages.value.length; // 获取即将添加的消息索引
+        const messageObj = {
+            id: 'msg-' + messageIndex, // 修复：使用与模板一致的ID格式
+            type,
+            isUser,
+            timestamp: Date.now(),
+            content,
+            status: 'sent'
+        };
+
+        // 如果是图片消息，添加图片相关属性
+        if (type === 'image') {
+            messageObj.imageUrl = content.url;
+            messageObj.description = content.description;
+            messageObj.localPath = content.localPath;
+            messageObj.mimeType = content.mimeType;
+            messageObj.model = content.model;
+        }
+
+        messages.value.push(messageObj);
+
         // 如果是用户消息，自动展开追问
         if (isUser) {
             showFollowUp.value = true;
         }
-        // 只有在用户没有手动滚动的情况下才自动滚动到底部
+
+        // 修复：自动滚动到底部
         nextTick(() => {
             if (!isUserScrolling.value) {
-                const lastIndex = messages.value.length - 1;
-                lastMessageId.value = 'msg-' + lastIndex;
+                lastMessageId.value = 'msg-' + messageIndex; // 使用正确的ID
                 hasNewMessage.value = false;
-                scrollToBottom();
+                // 延迟滚动以确保DOM更新完成
+                setTimeout(() => {
+                    scrollToBottom();
+                }, 50);
             } else {
-                // 用户正在滚动时，设置新消息标记
                 hasNewMessage.value = true;
             }
         });
     }
 
+    // 修改：处理图片消息 - 图片显示在用户侧，AI回复文本显示在机器人侧
+    function handleImageMessage(imageData) {
+        addLog(`收到图片消息: ${imageData.description}`, 'info');
+        
+        // 添加用户发送的图片消息（显示在右侧用户侧）
+        addMessage(imageData, true, 'image');
+        
+        // 清空追问问题
+        followUpQuestions.value = [];
+        showFollowUp.value = false;
+        
+        // 自动让AI对图片进行回复
+        if (isConnected.value && imageData.description) {
+            // 显示加载动画
+            isLoading.value = true;
+            startResponseTimeout();
+            
+            // 发送图片描述给AI进行语音回复
+            // 这里直接发送描述文本，AI会返回纯文本回复
+            const imagePrompt = imageData.description;
+            
+            xiaozhiService.sendTextMessage(imagePrompt, settings.selectedVoice).catch(error => {
+                addLog(`发送图片描述失败: ${error}`, 'error');
+                isLoading.value = false;
+                clearResponseTimeout();
+                
+                // 显示错误提示
+                uni.showToast({
+                    title: 'AI回复失败，请重试',
+                    icon: 'none'
+                });
+            });
+        }
+    }
+
     // 处理滚动事件
     function onScroll(e) {
         const currentScrollTop = e.detail.scrollTop;
-        // 检测用户是否在主动滚动
         if (Math.abs(currentScrollTop - lastScrollTop.value) > 5) {
             isUserScrolling.value = true;
-            // 清除之前的定时器
             if (scrollTimeout.value) {
                 clearTimeout(scrollTimeout.value);
             }
-            // 1.5秒后重置滚动状态，允许自动滚动
             scrollTimeout.value = setTimeout(() => {
                 isUserScrolling.value = false;
             }, 1500);
@@ -114,7 +163,6 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
 
         lastScrollTop.value = currentScrollTop;
 
-        // 如果用户滚动到接近底部（距离底部小于100px），则重置为自动滚动模式
         const scrollHeight = e.detail.scrollHeight;
         const scrollViewHeight = e.detail.scrollTop + e.detail.clientHeight;
         if (scrollHeight - scrollViewHeight < 100) {
@@ -127,7 +175,7 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
     }
 
     // 手动滚动到底部
-    function scrollToBottom() {
+  function scrollToBottom() {
         isUserScrolling.value = false;
         hasNewMessage.value = false;
         if (scrollTimeout.value) {
@@ -139,137 +187,121 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
             if (messages.value.length > 0) {
                 const lastIndex = messages.value.length - 1;
                 lastMessageId.value = 'msg-' + lastIndex;
+                
+                // 修复：移除错误的 uni.pageScrollTo，依靠 scroll-into-view 属性
+                // 如果需要强制刷新滚动，可以先清空再设置
                 setTimeout(() => {
-                    uni.pageScrollTo({
-                        scrollTop: 9999999,
-                        duration: 300
+                    lastMessageId.value = '';
+                    nextTick(() => {
+                        lastMessageId.value = 'msg-' + lastIndex;
                     });
-                }, 100);
+                }, 50);
             }
         });
-    }    // 处理语音识别结果
+    }
+
+    // 处理语音识别结果
     function handleSpeechRecognition(text) {
         if (!text) return;
-
         addLog(`收到语音识别结果: ${text}`, 'info');
-
-        // 直接添加到消息列表，作为用户消息显示在右侧
         addMessage(text, true);
-
-        // 此处也应该隐藏追问
         followUpQuestions.value = [];
         showFollowUp.value = false;
     }
 
-    // 处理服务器消息
+    // 处理服务器消息 - 确保机器人回复只显示纯文本
     function handleServerMessage(message) {
-        // 收到任何服务器消息时，清除响应超时计时器
         clearResponseTimeout();
 
         if (message.type === 'hello') {
             addLog(`服务器回应: ${message.message}`, 'info');
-            // 隐藏加载动画
             isLoading.value = false;
         } else if (message.type === 'tts') {
-            if (true) {
-                // TTS状态消息
-                if (message.state === 'start') {
-                    addLog('服务器开始发送语音', 'info');
-                } else if (message.state === 'sentence_start') {
-                    addLog(`服务器发送语音段: ${message.text}`, 'info');
-                    // 添加文本到会话记录，并隐藏加载动画
-                    if (message.text) {
-                        addMessage(message.text, false);
-                        isLoading.value = false;
-                    }
-                } else if (message.state === 'sentence_end') {
-                    addLog(`语音段结束: ${message.text}`, 'info');
-                } else if (message.state === 'stop') {
-                    addLog('服务器语音传输结束', 'info');
-                    // 确保隐藏加载动画
+            if (message.state === 'start') {
+                addLog('服务器开始发送语音', 'info');
+            } else if (message.state === 'sentence_start') {
+                addLog(`服务器发送语音段: ${message.text}`, 'info');
+                if (message.text) {
+                    // 机器人回复添加为纯文本消息，显示在左侧
+                    addMessage(message.text, false, 'text');
                     isLoading.value = false;
                 }
+            } else if (message.state === 'sentence_end') {
+                addLog(`语音段结束: ${message.text}`, 'info');
+            } else if (message.state === 'stop') {
+                addLog('服务器语音传输结束', 'info');
+                isLoading.value = false;
             }
         } else if (message.type === 'stt') {
-            // 语音识别结果
             addLog(`识别结果: ${message.text}`, 'info');
         } else if (message.type === 'llm') {
-            // 大模型回复
             addLog(`大模型回复: ${message.text}`, 'info');
-            // 添加大模型回复到会话记录
             if (message.text && message.text !== '😊') {
-                addMessage(message.text, false);
-                // 收到回复后隐藏加载动画
+                // 机器人回复添加为纯文本消息，显示在左侧
+                addMessage(message.text, false, 'text');
                 isLoading.value = false;
             }
         } else if (message.type === 'follow_up_questions') {
-            // 追问问题处理
             addLog(`收到追问问题: ${message.questions}`, 'info');
 
-            // 解析追问问题（支持换行符和问号分隔）
             let questions = [];
             if (message.questions) {
                 if (Array.isArray(message.questions)) {
                     questions = message.questions;
                 } else {
-                    // 尝试用换行符分割
                     questions = message.questions.split('$');
-                    // 如果分割后只有1个元素，尝试用问号分割
                     if (questions.length === 1) {
                         questions = message.questions.split('?').filter(q => q.trim());
-                        // 给每个问题添加问号
                         questions = questions.map(q => q.trim() + '?');
                     }
                 }
             }
 
-            // 存储追问问题
             followUpQuestions.value = questions;
-            // 默认显示追问区域
             showFollowUp.value = true;
-
-            // 确保隐藏加载动画
             isLoading.value = false;
-        } else {
-            // 未知消息类型
+            nextTick(() => {
+                setTimeout(() => {
+                    scrollToBottom();
+                }, 100);
+            });
+        
+        }  else {
             addLog(`未知消息类型: ${message.type}`, 'info');
-            // 确保隐藏加载动画
             isLoading.value = false;
         }
-    }    // 加载设置
-    // function loadSettings() {
-    //     // 不再需要单独加载设置，因为使用全局状态管理
-    //     // 全局设置会自动加载并同步
-    // }
+    }
+
     function toggleFollowUp() {
         showFollowUp.value = !showFollowUp.value;
     }
+
     // 清理资源
     function cleanupResources() {
         if (scrollTimeout.value) {
             clearTimeout(scrollTimeout.value);
             scrollTimeout.value = null;
         }
-    } return {
+    }
+
+    return {
         messages,
         messageText,
         isLoading,
         lastMessageId,
         isUserScrolling,
         hasNewMessage,
-        // 移除 selectedVoice，现在使用全局状态管理
         sendMessage,
         addMessage,
         onScroll,
         scrollToBottom,
         handleSpeechRecognition,
         handleServerMessage,
-        // 不再需要单独加载设置
-        // loadSettings,
         cleanupResources,
         followUpQuestions,
         showFollowUp,
         sendFollowUpQuestion,
-        toggleFollowUp
+        toggleFollowUp,
+        handleImageMessage
     };
 }

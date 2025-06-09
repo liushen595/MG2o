@@ -89,13 +89,26 @@
 /* 左侧按钮区域 */
 .left-button-area {
     display: flex;
-    align-items: flex-end;
-    justify-content: flex-start;
-    height: 100%;
-    width: 80rpx;
-    flex-shrink: 0;
+    align-items: center;
+    gap: 12rpx; /* 按钮间距 */
+    
+    .camera-btn {
+        padding: 0;
+        background: none;
+        border: none;
+        line-height: 1;
+        
+        .camera-icon {
+            width: 48rpx;
+            height: 48rpx;
+            filter: invert(40%) sepia(8%) saturate(830%) hue-rotate(185deg) brightness(93%) contrast(89%);
+        }
+        
+        &::after {
+            border: none;
+        }
+    }
 }
-
 /* 右侧按钮区域 */
 .right-button-area {
     display: flex;

@@ -100,7 +100,15 @@ export default function useGlobalSettings() {
     const getCurrentVoiceCode = () => {
         return voiceMap[globalSettings.selectedVoice] || voiceMap[1];
     };
-
+    const globalSettings = {
+        apiEndpoints: {
+            imageProcessing: 'https://huisuda.com/api/v1/process-image/'
+        },
+        imageOptions: {
+            maxSize: 5 * 1024 * 1024, // 5MB
+            allowedTypes: ['image/jpeg', 'image/png']
+    }
+    };
     return {
         // 响应式状态
         settings: globalSettings,
