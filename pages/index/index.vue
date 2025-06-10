@@ -150,6 +150,19 @@
 	};
 	// 初始化导航功能
 	const { showDrawer, openDrawer, closeDrawer, navigateToPage } = useNavigation();
+		// 在主页面中添加
+	const keyboardHeight = ref(0);
+
+	function handleKeyboardHeightChange(height) {
+		keyboardHeight.value = height;
+		// 动态调整消息列表容器的高度
+		nextTick(() => {
+			const container = document.querySelector('.message-list-container');
+			if (container) {
+				container.style.marginBottom = (220 + height) + 'rpx';
+			}
+		});
+	}
 
 	// 初始化应用
 	function initializeApp() {
@@ -227,14 +240,9 @@
 	/* 消息列表容器，让其占据主要空间 */
 	.message-list-container {
 		flex: 1;
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
+		height: 0; /* 重要：强制 flex 项收缩 */
+		overflow: visible; /* 允许滚动 */
 		position: relative;
-		/* 确保绝对定位的子元素相对于此容器定位 */
-		min-height: 0;
-		/* 确保flex子项能收缩 */
 		margin-bottom: 220rpx;
-		/* 为底部fixed的MessageInput留出空间 */
 	}
 </style>

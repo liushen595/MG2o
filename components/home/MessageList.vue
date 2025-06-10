@@ -1,12 +1,13 @@
 <template>
     <scroll-view 
-        class="conversation" 
+       class="conversation" 
         scroll-y="true" 
         :scroll-with-animation="true" 
         :scroll-into-view="lastMessageId"
         :enhanced="true"
         :enable-back-to-top="true" 
         :scroll-anchoring="true"
+        :style="{ height: '100%' }"
         @scroll="onScroll"
         @scrolltolower="handleScrollToLower"
     >
@@ -134,14 +135,10 @@ export default {
         flex: 1;
         background-color: #f5f5f5;
         width: 100%;
-        display: flex;
-        overflow: hidden; /* 修改：确保滚动正常工作 */
     }
 
     .conversation-inner {
         padding: 20rpx;
-        flex: 1;
-        min-height: 100%; /* 确保内容至少占满容器高度 */
     }
 
     /* 新增：底部占位符，确保最后的内容不被输入框遮挡 */

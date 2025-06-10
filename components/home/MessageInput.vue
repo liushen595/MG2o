@@ -83,12 +83,16 @@
     });
 
     const emit = defineEmits([
-        'update:messageText',
+       'update:messageText',
         'send',
         'touchStart',
-        'touchMove',
+        'touchMove', 
         'touchEnd',
-        'touchCancel'
+        'touchCancel',
+        'keyboard-show',    
+        'keyboard-hide',    
+        'keyboard-height-change', 
+        'image-sent'
     ]);
 
     // 输入状态：'initial', 'textInput', 'voiceReady'
@@ -171,24 +175,25 @@
     }    // 处理输入框获得焦点
     function handleInputFocus() {
         keyboardVisible.value = true;
-        // 获取键盘高度并设置CSS变量
-        uni.onKeyboardHeightChange(res => {
-            if (res.height > 0) {
-                const heightInPx = res.height + 'px';
-                document.documentElement.style.setProperty('--keyboard-height', heightInPx);
-            } else {
-                document.documentElement.style.setProperty('--keyboard-height', '0px');
-            }
-        });
-
-        if (inputState.value === 'initial' || inputState.value === 'voiceReady') {
-            inputState.value = 'textInput';
+        emit('keyboard-show'); // 通知父组件
+    
+    uni.onKeyboardHeightChange(res => {
+        if (res.height > 0) {
+            const heightInPx = res.height + 'px';
+            document.documentElement.style.setProperty('--keyboard-height', heightInPx);
+            // 通知父组件键盘高度变化
+            emit('keyboard-height-change', res.height);
+        } else {
+            document.documentElement.style.setProperty('--keyboard-height', '0px');
+            emit('keyboard-height-change', 0);
         }
-    }
+    });
+}
 
     // 处理输入框失去焦点
     function handleInputBlur() {
         keyboardVisible.value = false;
+        emit('keyboard-hide'); // 通知父组件
         document.documentElement.style.setProperty('--keyboard-height', '0px');
 
         if (inputState.value === 'textInput' && !hasText.value) {
@@ -258,6 +263,7 @@
             inputState.value = 'initial';
         }, 300); // 短暂延迟，让录音动画完成
     }
+       
 </script>
 
 <style lang="scss" scoped>
