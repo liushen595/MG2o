@@ -9,9 +9,6 @@
  * @license MIT
  */
 
-// 导入全局状态管理，获取音色映射
-import useGlobalSettings from '../composables/useGlobalSettings.js';
-
 let websocket = null;
 let isConnected = false;
 let messageCallbacks = [];
@@ -23,13 +20,6 @@ let isPlaying = false;
 
 // 添加语音识别结果回调
 let onSpeechRecognitionCallback = null;
-
-// 获取全局设置实例
-const globalSettings = useGlobalSettings();
-const { voiceMap, getCurrentVoiceCode } = globalSettings;
-
-// 默认音色 - 使用全局状态管理
-let currentVoice = getCurrentVoiceCode();
 
 /**
  * 连接到小智服务器
@@ -229,59 +219,33 @@ const disconnectFromServer = () => {
 
 /**
  * 发送文本消息
- * @param {String} message 文本消息
- * @param {String} voice 语音音色 
+ * @param {String} message 完整的文本消息（包含所有附加提示）
+ * @param {String} voice 语音音色字符串 
  * @returns {Promise} 发送结果
  */
-const sendTextMessage = (message, voiceId = 1) => {
+const sendTextMessage = (message, voice = 'zh-CN-XiaoxiaoNeural') => {
   return new Promise((resolve, reject) => {
     if (!message || !websocket || !isConnected) {
       reject('WebSocket未连接或消息为空');
       return;
     }
 
-    try {      // 获取最新的全局设置实例
-      const currentGlobalSettings = useGlobalSettings();
-
-      // 使用全局音色映射
-      const selectedVoice = voiceMap[voiceId];
-
-      // 获取当前地区和语言设置
-      const currentRegion = currentGlobalSettings.getCurrentRegion();
-      const currentLanguageCode = currentGlobalSettings.getCurrentLanguageCode();
-
-
-      // 构建附加提示文本
-      let additionalPrompt = '';
-      if (currentRegion && currentRegion.trim() !== '') {
-        additionalPrompt += `请结合${currentRegion}的历史和文化`;
-      }
-      if (currentLanguageCode && currentLanguageCode !== 'zh-CN') {
-        if (additionalPrompt) {
-          additionalPrompt += `，忽略我提问时使用的语言，请一定使用${currentLanguageCode}对应的语言来回答`;
-        } else {
-          additionalPrompt += `忽略我提问时使用的语言，请一定使用${currentLanguageCode}对应的语言来回答`;
-        }
-      }
-      if (additionalPrompt) {
-        additionalPrompt += '。';
-      }
-
-      // 直接发送listen消息
+    try {
+      // 直接发送listen消息，不进行任何消息构建或修改
       const listenMessage = {
         type: 'listen',
         mode: 'manual',
         state: 'detect',
-        text: message + (additionalPrompt ? ' ' + additionalPrompt : ''),
-        voice: selectedVoice // 使用全局状态管理中的音色
+        text: message,
+        voice: voice
       };
 
-      console.log('发送文本消息，使用音色:', selectedVoice);
-      console.log('完整消息内容:', listenMessage.text);
+      console.log('发送文本消息，使用音色:', voice);
+      console.log('完整消息内容:', message);
       websocket.send({
         data: JSON.stringify(listenMessage),
         success: () => {
-          console.log('文本消息发送成功：' + message);
+          console.log('文本消息发送成功');
           resolve(true);
         },
         fail: (err) => {
@@ -517,10 +481,11 @@ const startRecording = (options = {}) => {
 /**
  * 停止录音并发送到服务器
  * @param {Function} progressCallback 上传进度回调
- * @param {Number} voiceId 音色ID
+ * @param {String} voice 音色字符串
+ * @param {String} additionalPrompt 附加提示文本
  * @returns {Promise} 上传结果
  */
-const stopRecordingAndSend = (progressCallback, voiceId) => {
+const stopRecordingAndSend = (progressCallback, voice = 'zh-CN-XiaoxiaoNeural', additionalPrompt = '') => {
   return new Promise((resolve, reject) => {
     if (!recorderManager || !isRecording) {
       reject('没有正在进行的录音');
@@ -545,7 +510,7 @@ const stopRecordingAndSend = (progressCallback, voiceId) => {
         // 确保获得文件后立即发送，避免被下一个录音覆盖
         const currentFilePath = recordFilePath;
 
-        sendAudioFile(currentFilePath, progressCallback, voiceId)
+        sendAudioFile(currentFilePath, progressCallback, voice, additionalPrompt)
           .then(resolve)
           .catch(reject);
       } else {
@@ -568,49 +533,20 @@ const stopRecordingAndSend = (progressCallback, voiceId) => {
  * 发送音频文件到服务器
  * @param {String} filePath 音频文件路径
  * @param {Function} progressCallback 上传进度回调
+ * @param {String} voice 语音音色字符串
+ * @param {String} additionalPrompt 附加提示文本（可选）
  * @returns {Promise} 上传结果
  */
-const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
+const sendAudioFile = (filePath, progressCallback, voice = 'zh-CN-XiaoxiaoNeural', additionalPrompt = '') => {
   return new Promise((resolve, reject) => {
     if (!websocket || !isConnected) {
       reject('WebSocket未连接');
       return;
-    } console.log('准备发送音频文件:', filePath);    // 获取最新的全局设置实例
-    const currentGlobalSettings = useGlobalSettings();
-
-    // 使用全局音色映射
-    const selectedVoice = voiceMap[voiceId];
-    currentVoice = selectedVoice;
-    console.log('当前音色设置为:', currentVoice);
-
-    // 获取当前地区和语言设置
-    const currentRegion = currentGlobalSettings.getCurrentRegion();
-    const currentLanguageCode = currentGlobalSettings.getCurrentLanguageCode();
-
-    // 调试信息 - sendAudioFile
-    console.log('=== sendAudioFile 调试信息 ===');
-    console.log('currentGlobalSettings:', currentGlobalSettings);
-    console.log('getCurrentRegion 类型:', typeof currentGlobalSettings.getCurrentRegion);
-    console.log('getCurrentLanguageCode 类型:', typeof currentGlobalSettings.getCurrentLanguageCode);
-    console.log('currentRegion:', currentRegion);
-    console.log('currentLanguageCode:', currentLanguageCode);
-    console.log('currentLanguageCode 类型:', typeof currentLanguageCode);
-
-    // 构建附加提示文本
-    let additionalPrompt = '';
-    if (currentRegion && currentRegion.trim() !== '') {
-      additionalPrompt += `请结合${currentRegion}的历史和文化`;
-    }
-    if (currentLanguageCode && currentLanguageCode !== 'zh-CN') {
-      if (additionalPrompt) {
-        additionalPrompt += `，忽略我提问时使用的语言，请一定使用${currentLanguageCode}对应的语言来回答`;
-      } else {
-        additionalPrompt += `忽略我提问时使用的语言，请一定使用${currentLanguageCode}对应的语言来回答`;
-      }
-    }
-    if (additionalPrompt) {
-      additionalPrompt += '。';
-    }
+    } 
+    
+    console.log('准备发送音频文件:', filePath);
+    console.log('当前音色设置为:', voice);
+    console.log('附加提示文本:', additionalPrompt);
 
     try {
       // 1. 发送录音开始信号 - 使用标准的listen协议消息格式
@@ -619,9 +555,10 @@ const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
         mode: 'manual',
         state: 'start',
         format: 'mp3',
-        voice: selectedVoice, // 使用全局状态管理中的音色
+        voice: voice,
         address: additionalPrompt
       };
+      
       // 使用JSON.stringify()序列化消息
       const startData = JSON.stringify(listenStartMessage);
 
@@ -650,9 +587,9 @@ const sendAudioFile = (filePath, progressCallback, voiceId = 1) => {
                     mode: 'manual',
                     state: 'stop',
                     format: 'mp3',
-                    voice: selectedVoice // 使用全局状态管理中的音色
+                    voice: voice
                   };
-                  console.log('发送录音结束信号，使用音色:', listenEndMessage.voice);
+                  console.log('发送录音结束信号，使用音色:', voice);
 
                   // 增加一点延迟再发送结束信号
                   setTimeout(() => {

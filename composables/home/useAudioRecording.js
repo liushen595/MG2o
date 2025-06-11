@@ -3,7 +3,7 @@ import xiaozhiService from '../../utils/xiaozhi-service.js';
 import useGlobalSettings from '../useGlobalSettings.js';
 
 export default function useAudioRecording(isConnected, startResponseTimeout, clearResponseTimeout, addLog) {
-    // 引入全局设置
+    // 获取全局设置实例 - 直接使用 reactive 对象
     const { settings } = useGlobalSettings();
     const isRecording = ref(false);
     const audioVisualizerData = ref(Array(10).fill(0));
@@ -94,11 +94,15 @@ export default function useAudioRecording(isConnected, startResponseTimeout, cle
         }
 
         // 停止可视化
-        stopAudioVisualization();        // 定义进度回调函数
+        stopAudioVisualization();
+
+        // 定义进度回调函数
         const progressCallback = (progress) => {
             addLog(`上传进度: ${Math.round(progress * 100)}%`, 'info');
-        };        // 停止录音并发送，使用全局设置中的音色
-        xiaozhiService.stopRecordingAndSend(progressCallback, settings.selectedVoice)
+        };
+
+        // 停止录音并发送，直接使用 reactive 对象的属性
+        xiaozhiService.stopRecordingAndSend(progressCallback, settings.smartVoice, settings.additionalPrompt)
             .catch(error => {
                 addLog(`录音停止错误: ${error}`, 'error');
             });
@@ -112,8 +116,10 @@ export default function useAudioRecording(isConnected, startResponseTimeout, cle
         // 定义进度回调函数
         const progressCallback = (progress) => {
             addLog(`上传进度: ${progress}%`, 'info');
-        };        // 使用xiaozhi-service的统一接口发送录音，使用全局设置中的音色
-        xiaozhiService.sendAudioFile(filePath, progressCallback, settings.selectedVoice)
+        };
+
+        // 使用xiaozhi-service的统一接口发送录音，直接使用 reactive 对象的属性
+        xiaozhiService.sendAudioFile(filePath, progressCallback, settings.smartVoice, settings.additionalPrompt)
             .then(() => {
                 addLog('音频数据发送成功', 'success');
             })

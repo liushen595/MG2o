@@ -4,14 +4,16 @@
  */
 import { ref, reactive, watch } from 'vue';
 
-// 全局响应式状态
-const globalSettings = reactive({
-    selectedVoice: 1,
-    autoConnect: true,
-    saveHistory: true,
-    languageIndex: 1,
-    regionIndex: 1,
-});
+// 语言代码映射
+const languageCodes = {
+    1: 'zh-CN',
+    2: 'en-US',
+    3: 'en-GB',
+    4: 'ja-JP',
+    5: 'ko-KR',
+    6: 'fr-FR',
+    7: 'hu-HU'
+};
 
 // 音色映射
 const voiceMap = {
@@ -48,11 +50,84 @@ const language = {
     7: 'Magyar',
 }
 
+// 外语音色映射
+const foreignVoiceMap = {
+    2: 'en-US-AriaNeural',    // English(US)
+    3: 'en-GB-SoniaNeural',   // English(UK)
+    4: 'ja-JP-NanamiNeural',  // 日本語
+    5: 'ko-KR-SunHiNeural',   // 한국어
+    6: 'fr-FR-DeniseNeural',  // Français
+    7: 'hu-HU-NoemiNeural',   // Magyar
+};
+
+// 全局响应式状态
+const globalSettings = reactive({
+    selectedVoice: 1,
+    autoConnect: true,
+    saveHistory: true,
+    languageIndex: 1,
+    regionIndex: 1,
+
+    // 计算属性 - 使用 getter 实现响应式计算
+    get currentVoiceCode() {
+        return voiceMap[this.selectedVoice] || voiceMap[1];
+    },
+
+    get currentVoiceName() {
+        return voiceNames[this.selectedVoice] || '未知音色';
+    },
+
+    get currentRegion() {
+        return region[this.regionIndex] || '';
+    },
+
+    get currentLanguage() {
+        return language[this.languageIndex] || '中文简体';
+    },
+
+    get currentLanguageCode() {
+        return languageCodes[this.languageIndex] || 'zh-CN';
+    },
+
+    // 智能音色选择 - 根据语言自动选择合适音色
+    get smartVoice() {
+        // 如果是非中文语言，使用对应的外语音色
+        if (this.currentLanguageCode !== 'zh-CN') {
+            return foreignVoiceMap[this.languageIndex] || this.currentVoiceCode;
+        }
+        // 中文使用用户设置的音色
+        return this.currentVoiceCode;
+    },
+
+    // 附加提示文本构建
+    get additionalPrompt() {
+        let prompt = '';
+        if (this.currentRegion && this.currentRegion.trim() !== '') {
+            prompt += `请结合${this.currentRegion}的历史和文化`;
+        }
+        if (this.currentRegion && this.currentRegion.trim() === '') {
+            prompt += "现在不需要结合特定国家的历史和文化";
+        }
+        if (this.currentLanguageCode) {
+            if (prompt) {
+                prompt += `，忽略我提问时使用的语言，请一定使用${this.currentLanguageCode}对应的语言来回答`;
+            } else {
+                prompt += `忽略我提问时使用的语言，请一定使用${this.currentLanguageCode}对应的语言来回答`;
+            }
+        }
+        if (prompt) {
+            prompt += '。';
+        }
+        return prompt;
+    }
+});
+
+
 // 监听音色变化，自动保存到本地存储
 watch(() => globalSettings.selectedVoice, (newVoice) => {
     try {
         uni.setStorageSync('selectedVoice', newVoice);
-        console.log('音色设置已保存:', voiceNames[newVoice]);
+        console.log('音色设置已保存:', globalSettings.currentVoiceName);
     } catch (error) {
         console.error('保存音色设置失败:', error);
     }
@@ -69,12 +144,12 @@ watch(() => globalSettings.saveHistory, (newValue) => {
 
 watch(() => globalSettings.languageIndex, (newIndex) => {
     uni.setStorageSync('languageIndex', newIndex);
-    console.log('语言设置已保存:', language[newIndex] || '未知语言');
+    console.log('语言设置已保存:', globalSettings.currentLanguage);
 });
 
 watch(() => globalSettings.regionIndex, (newIndex) => {
     uni.setStorageSync('regionIndex', newIndex);
-    console.log('地区设置已保存:', region[newIndex] || '未知地区');
+    console.log('地区设置已保存:', globalSettings.currentRegion);
 });
 
 export default function useGlobalSettings() {
@@ -102,9 +177,7 @@ export default function useGlobalSettings() {
     // 更新地区设置
     const updateRegion = (index) => {
         globalSettings.regionIndex = index;
-    };
-
-    // 从本地存储加载所有设置
+    };    // 从本地存储加载所有设置
     const loadAllSettings = () => {
         try {
             globalSettings.selectedVoice = uni.getStorageSync('selectedVoice') || 1;
@@ -114,60 +187,24 @@ export default function useGlobalSettings() {
             globalSettings.regionIndex = uni.getStorageSync('regionIndex') || 1;
 
             console.log('全局设置已加载:', {
-                voice: voiceNames[globalSettings.selectedVoice],
+                voice: globalSettings.currentVoiceName,
                 autoConnect: globalSettings.autoConnect,
                 saveHistory: globalSettings.saveHistory,
-                language: language[globalSettings.languageIndex],
-                region: region[globalSettings.regionIndex]
+                language: globalSettings.currentLanguage,
+                region: globalSettings.currentRegion
             });
         } catch (error) {
             console.error('加载全局设置失败:', error);
         }
-    };
-
-    // 获取当前音色名称
-    const getCurrentVoiceName = () => {
-        return voiceNames[globalSettings.selectedVoice] || '未知音色';
-    };
-
-    // 获取当前音色名称(Edge API)
-    const getCurrentVoiceCode = () => {
-        return voiceMap[globalSettings.selectedVoice] || voiceMap[1];
-    };
-
-
-    // 获取当前地区
-    const getCurrentRegion = () => {
-        return region[globalSettings.regionIndex] || '';
-    };
-
-    // 获取当前语言
-    const getCurrentLanguage = () => {
-        return language[globalSettings.languageIndex] || '中文简体';
-    };    // 获取当前语言代码
-    const getCurrentLanguageCode = () => {
-        console.log('getCurrentLanguageCode 被调用');
-        console.log('globalSettings.languageIndex:', globalSettings.languageIndex);
-        const codes = {
-            1: 'zh-CN',
-            2: 'en-US',
-            3: 'en-GB',
-            4: 'ja-JP',
-            5: 'ko-KR',
-            6: 'fr-FR',
-            7: 'hu-HU'
-        };
-        const result = codes[globalSettings.languageIndex] || 'zh-CN';
-        console.log('getCurrentLanguageCode 返回:', result);
-        return result;
-    };
-    globalSettings.apiEndpoints = { // 直接扩展原有的响应式对象
+    }; globalSettings.apiEndpoints = {
+        // 直接扩展原有的响应式对象
         imageProcessing: 'https://huisuda.com/api/v1/process-image/'
     };
     globalSettings.imageOptions = {
         maxSize: 5 * 1024 * 1024,
         allowedTypes: ['image/jpeg', 'image/png']
     };
+
     return {
         // 响应式状态
         settings: globalSettings,
@@ -177,6 +214,8 @@ export default function useGlobalSettings() {
         voiceNames,
         region,
         language,
+        languageCodes,
+        foreignVoiceMap,
 
         // 方法
         updateVoice,
@@ -185,10 +224,13 @@ export default function useGlobalSettings() {
         updateLanguage,
         updateRegion,
         loadAllSettings,
-        getCurrentVoiceName,
-        getCurrentVoiceCode,
-        getCurrentRegion,
-        getCurrentLanguage,
-        getCurrentLanguageCode
+
+        // 保留一些兼容性方法（逐步废弃）
+        getCurrentVoiceName: () => globalSettings.currentVoiceName,
+        getCurrentVoiceCode: () => globalSettings.currentVoiceCode,
+        getCurrentRegion: () => globalSettings.currentRegion,
+        getCurrentLanguage: () => globalSettings.currentLanguage,
+        getCurrentLanguageCode: () => globalSettings.currentLanguageCode,
+        getCurrentLanguageIndex: () => globalSettings.languageIndex
     };
 }

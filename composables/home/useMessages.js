@@ -15,14 +15,13 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
     const scrollTimeout = ref(null);
     const lastScrollTop = ref(0);
     const hasNewMessage = ref(false);
-    
+
     // 追问相关状态
     const followUpQuestions = ref([]);
     const showFollowUp = ref(false);
-    
-    // 使用全局设置管理音色选择
-    const { settings, getCurrentVoiceCode } = useGlobalSettings();
 
+    // 获取全局设置实例 - 直接使用 reactive 对象
+    const { settings } = useGlobalSettings();
     // 发送追问问题
     function sendFollowUpQuestion(question) {
         // 添加到消息列表
@@ -33,8 +32,11 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
 
         // 设置响应超时计时器
         startResponseTimeout();
-        
-        xiaozhiService.sendTextMessage(question, settings.selectedVoice).catch(error => {
+
+        // 构建完整消息 - 直接使用 reactive 对象的属性
+        const fullMessage = question + (settings.additionalPrompt ? ' ' + settings.additionalPrompt : '');
+
+        xiaozhiService.sendTextMessage(fullMessage, settings.smartVoice).catch(error => {
             addLog(`发送失败: ${error}`, 'error');
             isLoading.value = false;
             clearResponseTimeout();
@@ -61,7 +63,10 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         isLoading.value = true;
         startResponseTimeout();
 
-        xiaozhiService.sendTextMessage(message, settings.selectedVoice).catch(error => {
+        // 构建完整消息 - 直接使用 reactive 对象的属性
+        const fullMessage = message + (settings.additionalPrompt ? ' ' + settings.additionalPrompt : '');
+
+        xiaozhiService.sendTextMessage(fullMessage, settings.smartVoice).catch(error => {
             addLog(`发送失败: ${error}`, 'error');
             isLoading.value = false;
             clearResponseTimeout();
@@ -97,16 +102,11 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         if (isUser) {
             showFollowUp.value = true;
         }
-
         // 修复：自动滚动到底部
         nextTick(() => {
             if (!isUserScrolling.value) {
-                lastMessageId.value = 'msg-' + messageIndex; // 使用正确的ID
+                lastMessageId.value = 'bottom-anchor'; // 使用底部锚点而不是消息ID
                 hasNewMessage.value = false;
-                // 延迟滚动以确保DOM更新完成
-                setTimeout(() => {
-                    scrollToBottom();
-                }, 50);
             } else {
                 hasNewMessage.value = true;
             }
@@ -116,29 +116,30 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
     // 修改：处理图片消息 - 图片显示在用户侧，AI回复文本显示在机器人侧
     function handleImageMessage(imageData) {
         addLog(`收到图片消息: ${imageData.description}`, 'info');
-        
+
         // 添加用户发送的图片消息（显示在右侧用户侧）
         addMessage(imageData, true, 'image');
-        
+
         // 清空追问问题
         followUpQuestions.value = [];
-        showFollowUp.value = false;
-        
-        // 自动让AI对图片进行回复
+        showFollowUp.value = false;        // 自动让AI对图片进行回复
         if (isConnected.value && imageData.description) {
             // 显示加载动画
             isLoading.value = true;
             startResponseTimeout();
-            
+
             // 发送图片描述给AI进行语音回复
             // 这里直接发送描述文本，AI会返回纯文本回复
             const imagePrompt = imageData.description;
-            
-            xiaozhiService.sendTextMessage(imagePrompt, settings.selectedVoice).catch(error => {
+
+            // 构建完整消息 - 直接使用 reactive 对象的属性
+            const fullMessage = imagePrompt + (settings.additionalPrompt ? ' ' + settings.additionalPrompt : '');
+
+            xiaozhiService.sendTextMessage(fullMessage, settings.smartVoice).catch(error => {
                 addLog(`发送图片描述失败: ${error}`, 'error');
                 isLoading.value = false;
                 clearResponseTimeout();
-                
+
                 // 显示错误提示
                 uni.showToast({
                     title: 'AI回复失败，请重试',
@@ -151,31 +152,35 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
     // 处理滚动事件
     function onScroll(e) {
         const currentScrollTop = e.detail.scrollTop;
-        if (Math.abs(currentScrollTop - lastScrollTop.value) > 5) {
+        const scrollHeight = e.detail.scrollHeight;
+        const scrollViewHeight = e.detail.clientHeight;
+
+        // 检查是否接近底部（容差范围内）
+        const isNearBottom = scrollHeight - (currentScrollTop + scrollViewHeight) < 150;
+
+        if (isNearBottom) {
+            // 如果接近底部，不认为是用户滚动
+            isUserScrolling.value = false;
+            hasNewMessage.value = false;
+            if (scrollTimeout.value) {
+                clearTimeout(scrollTimeout.value);
+                scrollTimeout.value = null;
+            }
+        } else if (Math.abs(currentScrollTop - lastScrollTop.value) > 10) {
+            // 只有在远离底部且滚动距离超过阈值时才认为是用户滚动
             isUserScrolling.value = true;
             if (scrollTimeout.value) {
                 clearTimeout(scrollTimeout.value);
             }
             scrollTimeout.value = setTimeout(() => {
                 isUserScrolling.value = false;
-            }, 1500);
+            }, 2000); // 延长超时时间
         }
 
         lastScrollTop.value = currentScrollTop;
-
-        const scrollHeight = e.detail.scrollHeight;
-        const scrollViewHeight = e.detail.scrollTop + e.detail.clientHeight;
-        if (scrollHeight - scrollViewHeight < 100) {
-            isUserScrolling.value = false;
-            if (scrollTimeout.value) {
-                clearTimeout(scrollTimeout.value);
-                scrollTimeout.value = null;
-            }
-        }
     }
-
     // 手动滚动到底部
-  function scrollToBottom() {
+    function scrollToBottom() {
         isUserScrolling.value = false;
         hasNewMessage.value = false;
         if (scrollTimeout.value) {
@@ -186,16 +191,8 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
         nextTick(() => {
             if (messages.value.length > 0) {
                 const lastIndex = messages.value.length - 1;
-                lastMessageId.value = 'msg-' + lastIndex;
-                
-                // 修复：移除错误的 uni.pageScrollTo，依靠 scroll-into-view 属性
-                // 如果需要强制刷新滚动，可以先清空再设置
-                setTimeout(() => {
-                    lastMessageId.value = '';
-                    nextTick(() => {
-                        lastMessageId.value = 'msg-' + lastIndex;
-                    });
-                }, 50);
+                // 简化滚动逻辑，直接设置到最后一条消息或底部锚点
+                lastMessageId.value = 'bottom-anchor';
             }
         });
     }
@@ -256,17 +253,17 @@ export default function useMessages(isConnected, startResponseTimeout, clearResp
                     }
                 }
             }
-
             followUpQuestions.value = questions;
             showFollowUp.value = true;
             isLoading.value = false;
             nextTick(() => {
                 setTimeout(() => {
-                    scrollToBottom();
+                    // 使用底部锚点确保追问区域可见
+                    lastMessageId.value = 'bottom-anchor';
                 }, 100);
             });
-        
-        }  else {
+
+        } else {
             addLog(`未知消息类型: ${message.type}`, 'info');
             isLoading.value = false;
         }
