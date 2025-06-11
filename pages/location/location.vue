@@ -2,7 +2,7 @@
     <view class="container">
         <view class="logo-container">
             <image class="logo" src="/static/logo.png" mode="aspectFit"></image>
-            <text class="app-title">苏博导智能体</text>
+            <text class="app-title">苏博导</text>
         </view>
 
         <view class="status-box" :class="{ 'success-box': isLocationVerified, 'error-box': locationError }">

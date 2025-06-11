@@ -6,7 +6,7 @@
                 <view class="">
                     <image class="drawer-logo" src="/static/logo.png" mode="aspectFit"></image>
                 </view>
-                <view><text class="drawer-title">苏博导智能体</text></view>
+                <view><text class="drawer-title">苏博导</text></view>
             </view>
             <view class="drawer-menu">
                 <view class="menu-item active" @click="navigateToPage('voice-assistant')">

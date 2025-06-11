@@ -3,7 +3,7 @@
         <view class="nav-left" @click="$emit('openDrawer')">
             <text class="menu-btn">☰</text>
         </view>
-        <text class="nav-title">苏博导智能体</text>
+        <text class="nav-title">苏博导</text>
         <view class="nav-right">
             <view class="connection-indicator" :class="{ connected: isConnected }" @click="$emit('reconnect')">
                 <text class="status-dot"></text>

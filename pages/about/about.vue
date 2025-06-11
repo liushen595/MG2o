@@ -2,7 +2,7 @@
 	<view class="about-container">
 		<view class="header">
 			<image class="logo" src="/static/logo.png" mode="aspectFit"></image>
-			<text class="app-name">苏博导智能体</text>
+			<text class="app-name">苏博导</text>
 			<text class="version">版本 2.0.1</text>
 		</view>
 
@@ -26,7 +26,7 @@
 				<text class="label">开发团队</text>
 				<view class="team-info">
 					<text class="content">苏州大学计算机科学与技术学院</text>
-					<text class="content">核心研究人员：唐子抗、彭凯恩、刘亦君、倪羽辰</text>
+					<text class="content">核心研究人员：唐子抗、彭凯恩、刘亦君、倪羽辰、李荣</text>
 					<text class="content">指导老师：邓滔、贾俊铖</text>
 				</view>
 			</view>
