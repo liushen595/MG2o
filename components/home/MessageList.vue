@@ -1,16 +1,6 @@
-<template>
-    <scroll-view 
-       class="conversation" 
-        scroll-y="true" 
-        :scroll-with-animation="true" 
-        :scroll-into-view="lastMessageId"
-        :enhanced="true"
-        :enable-back-to-top="true" 
-        :scroll-anchoring="true"
-        :style="{ height: '100%' }"
-        @scroll="onScroll"
-        @scrolltolower="handleScrollToLower"
-    >
+<template> <scroll-view class="conversation" scroll-y="true" :scroll-with-animation="false"
+        :scroll-into-view="lastMessageId" :enhanced="true" :enable-back-to-top="true" :scroll-anchoring="true"
+        :style="{ height: '100%' }" @scroll="onScroll" @scrolltolower="handleScrollToLower">
         <view class="conversation-inner">
             <view v-for="(msg, index) in messages" :key="msg.id || index" class="message" :class="{ user: msg.isUser }"
                 :id="'msg-' + index">
@@ -18,29 +8,19 @@
                 <template v-if="msg.isUser">
                     <text v-if="msg.type === 'text' || !msg.type">{{ msg.text || msg.content }}</text>
                     <view v-else-if="msg.type === 'image'" class="image-message-content">
-                        <image 
-                            :src="msg.localPath || msg.imageUrl" 
-                            mode="widthFix"
-                            class="message-image"
-                            @click="previewImage(msg)"
-                            @error="handleImageError(msg, index)"
-                        />
+                        <image :src="msg.localPath || msg.imageUrl" mode="widthFix" class="message-image"
+                            @click="previewImage(msg)" @error="handleImageError(msg, index)" />
                     </view>
                 </template>
                 <template v-else>
                     <text>{{ msg.text || msg.content }}</text>
                 </template>
             </view>
-            
-            <FollowUp 
-                v-if="followUpQuestions.length > 0" 
-                class="follow-up-wrapper"
-                :follow-up-questions="followUpQuestions" 
-                :show-follow-up="showFollowUp"
-                @send-follow-up="$emit('send-follow-up', $event)" 
-                @toggle-follow-up="$emit('toggle-follow-up')" 
-            />
-            
+
+            <FollowUp v-if="followUpQuestions.length > 0" class="follow-up-wrapper"
+                :follow-up-questions="followUpQuestions" :show-follow-up="showFollowUp"
+                @send-follow-up="$emit('send-follow-up', $event)" @toggle-follow-up="$emit('toggle-follow-up')" />
+
             <!-- 加载动画 -->
             <view v-if="isLoading" class="loading-container" id="loading-indicator">
                 <view class="loading-dots">
@@ -49,11 +29,11 @@
                     <view class="dot dot3"></view>
                 </view>
             </view>
-            
+
             <!-- 底部占位符，确保内容不被输入框遮挡 -->
             <view class="bottom-placeholder" id="bottom-anchor"></view>
         </view>
-        
+
         <!-- 新消息提示 -->
         <view v-if="isUserScrolling && hasNewMessage" class="new-message-tip" @click="scrollToBottom">
             <text>有新消息</text>
@@ -63,71 +43,71 @@
 </template>
 
 <script>
-import FollowUp from './FollowUpQuestions';
+    import FollowUp from './FollowUpQuestions';
 
-export default {
-    name: 'MessageList',
-    components: {
-        FollowUp
-    },
-    props: {
-        messages: {
-            type: Array,
-            default: () => []
+    export default {
+        name: 'MessageList',
+        components: {
+            FollowUp
         },
-        isLoading: {
-            type: Boolean,
-            default: false
+        props: {
+            messages: {
+                type: Array,
+                default: () => []
+            },
+            isLoading: {
+                type: Boolean,
+                default: false
+            },
+            lastMessageId: {
+                type: String,
+                default: ''
+            },
+            isUserScrolling: {
+                type: Boolean,
+                default: false
+            },
+            hasNewMessage: {
+                type: Boolean,
+                default: false
+            },
+            followUpQuestions: {
+                type: Array,
+                default: () => []
+            },
+            showFollowUp: {
+                type: Boolean,
+                default: false
+            }
         },
-        lastMessageId: {
-            type: String,
-            default: ''
-        },
-        isUserScrolling: {
-            type: Boolean,
-            default: false
-        },
-        hasNewMessage: {
-            type: Boolean,
-            default: false
-        },
-        followUpQuestions: {
-            type: Array,
-            default: () => []
-        },
-        showFollowUp: {
-            type: Boolean,
-            default: false
+        emits: ['scroll', 'scroll-to-bottom', 'send-follow-up', 'toggle-follow-up'],
+        methods: {
+            onScroll(e) {
+                this.$emit('scroll', e);
+            },
+            scrollToBottom() {
+                this.$emit('scroll-to-bottom');
+            },
+            // 新增：处理滚动到底部事件
+            handleScrollToLower() {
+                // 当滚动到底部时，重置用户滚动状态并确保显示最新内容
+                this.$emit('scroll-to-bottom');
+            },
+            previewImage(msg) {
+                uni.previewImage({
+                    urls: [msg.localPath || msg.imageUrl],
+                    current: 0
+                });
+            },
+            handleImageError(msg, index) {
+                console.error(`图片加载失败: ${msg.imageUrl || msg.localPath}`);
+                uni.showToast({
+                    title: '图片加载失败',
+                    icon: 'none'
+                });
+            }
         }
-    },
-    emits: ['scroll', 'scroll-to-bottom', 'send-follow-up', 'toggle-follow-up'],
-    methods: {
-        onScroll(e) {
-            this.$emit('scroll', e);
-        },
-        scrollToBottom() {
-            this.$emit('scroll-to-bottom');
-        },
-        // 新增：处理滚动到底部事件
-        handleScrollToLower() {
-            // 当滚动到底部时，重置用户滚动状态
-            this.$emit('scroll-to-bottom');
-        },
-        previewImage(msg) {
-            uni.previewImage({
-                urls: [msg.localPath || msg.imageUrl],
-                current: 0
-            });
-        },
-        handleImageError(msg, index) {
-            console.error(`图片加载失败: ${msg.imageUrl || msg.localPath}`);
-            uni.showToast({
-                title: '图片加载失败',
-                icon: 'none'
-            });
-        }
-    }
-};
+    };
 </script>
 
 <style scoped>
@@ -143,7 +123,8 @@ export default {
 
     /* 新增：底部占位符，确保最后的内容不被输入框遮挡 */
     .bottom-placeholder {
-        height: 40rpx; /* 调整这个值来控制底部间距 */
+        height: 120rpx;
+        /* 增加高度，确保有足够的空间 */
         width: 100%;
     }
 
@@ -229,10 +210,14 @@ export default {
     }
 
     @keyframes loading {
-        0%, 80%, 100% {
+
+        0%,
+        80%,
+        100% {
             transform: scale(0.8);
             opacity: 0.5;
         }
+
         40% {
             transform: scale(1);
             opacity: 1;
@@ -261,12 +246,19 @@ export default {
     }
 
     @keyframes bounce {
-        0%, 20%, 50%, 80%, 100% {
+
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
             transform: translateY(0);
         }
+
         40% {
             transform: translateY(-5rpx);
         }
+
         60% {
             transform: translateY(-3rpx);
         }
